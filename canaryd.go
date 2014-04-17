@@ -24,10 +24,6 @@ type measurement struct {
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 }
 
-func hello(res http.ResponseWriter, req *http.Request) {
-	fmt.Fprintln(res, "hello, world")
-}
-
 func checks(res http.ResponseWriter, req *http.Request) {
 
 }
@@ -44,7 +40,6 @@ func post_measurements(res http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", hello)
 	http.HandleFunc("/checks", checks)
 	http.HandleFunc("/measurements", post_measurements)
 
