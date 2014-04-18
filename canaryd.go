@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/vmihailenco/redis/v2"
 )
 
@@ -39,7 +40,10 @@ func get_measurements(res http.ResponseWriter, req *http.Request) {
 	now := time.Now()
 	epoch := now.Unix() - 60
 
-	vals, err := client.ZRevRangeByScore("measurements:6224bdee-2ac2-4af4-8fe1-03112f2391d8", redis.ZRangeByScore{
+	vars := mux.Vars(req)
+	check_id := vars["check_id"]
+
+	vals, err := client.ZRevRangeByScore("measurements:"+check_id, redis.ZRangeByScore{
 		Min: strconv.FormatInt(epoch, 10),
 		Max: "+inf",
 	}).Result()
@@ -98,9 +102,12 @@ func connect_to_redis() {
 func main() {
 	connect_to_redis()
 
-	http.HandleFunc("/checks", checks)
-	http.HandleFunc("/measurements", post_measurements)
-	http.HandleFunc("/", get_measurements)
+	r := mux.NewRouter()
+
+	r.HandleFunc("/checks", checks)
+	r.HandleFunc("/checks/{check_id}/measurements", get_measurements)
+	r.HandleFunc("/measurements", post_measurements)
+	http.Handle("/", r)
 
 	fmt.Println("fn=main listening=true")
 	err := http.ListenAndServe(":"+os.Getenv("PORT"), nil)
