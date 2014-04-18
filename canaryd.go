@@ -34,7 +34,8 @@ func checks(res http.ResponseWriter, req *http.Request) {
 
 func post_measurements(res http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
-	var measurements []measurement
+	measurements := make([]measurement, 0, 100)
+
 	err := decoder.Decode(&measurements)
 	if err != nil {
 		panic(err)
@@ -42,12 +43,11 @@ func post_measurements(res http.ResponseWriter, req *http.Request) {
 
 	for _, m := range measurements {
 		s, _ := json.Marshal(m)
-
 		z := redis.Z{Score: float64(m.T), Member: string(s)}
 		client.ZAdd("measurements:"+m.CheckId, z)
-
-		log.Println(string(s))
 	}
+
+	log.Printf("fn=post_measurements count=%d\n", len(measurements))
 }
 
 func main() {
@@ -61,7 +61,7 @@ func main() {
 	http.HandleFunc("/checks", checks)
 	http.HandleFunc("/measurements", post_measurements)
 
-	fmt.Println("listening...")
+	fmt.Println("fn=main listening=true")
 	err := http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 	if err != nil {
 		panic(err)
