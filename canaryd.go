@@ -34,6 +34,10 @@ func checks(res http.ResponseWriter, req *http.Request) {
 
 }
 
+func get_measurements(res http.ResponseWriter, req *http.Request) {
+
+}
+
 func post_measurements(res http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	measurements := make([]measurement, 0, 100)
@@ -73,6 +77,7 @@ func main() {
 
 	http.HandleFunc("/checks", checks)
 	http.HandleFunc("/measurements", post_measurements)
+	http.HandleFunc("/", get_measurements)
 
 	fmt.Println("fn=main listening=true")
 	err := http.ListenAndServe(":"+os.Getenv("PORT"), nil)
