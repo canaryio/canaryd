@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/vmihailenco/redis/v2"
 )
 
@@ -32,6 +34,35 @@ type measurement struct {
 
 func checks(res http.ResponseWriter, req *http.Request) {
 
+}
+
+func get_measurements(res http.ResponseWriter, req *http.Request) {
+	now := time.Now()
+	epoch := now.Unix() - 60
+
+	vars := mux.Vars(req)
+	check_id := vars["check_id"]
+
+	vals, err := client.ZRevRangeByScore("measurements:"+check_id, redis.ZRangeByScore{
+		Min: strconv.FormatInt(epoch, 10),
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		panic(err)
+	}
+
+	measurements := make([]measurement, 0, 100)
+
+	for _, v := range vals {
+		var m measurement
+		json.Unmarshal([]byte(v), &m)
+		measurements = append(measurements, m)
+	}
+
+	s, _ := json.MarshalIndent(measurements, "", "  ")
+
+	fmt.Fprintf(res, string(s))
 }
 
 func post_measurements(res http.ResponseWriter, req *http.Request) {
@@ -71,8 +102,12 @@ func connect_to_redis() {
 func main() {
 	connect_to_redis()
 
-	http.HandleFunc("/checks", checks)
-	http.HandleFunc("/measurements", post_measurements)
+	r := mux.NewRouter()
+
+	r.HandleFunc("/checks", checks)
+	r.HandleFunc("/checks/{check_id}/measurements", get_measurements)
+	r.HandleFunc("/measurements", post_measurements)
+	http.Handle("/", r)
 
 	fmt.Println("fn=main listening=true")
 	err := http.ListenAndServe(":"+os.Getenv("PORT"), nil)
