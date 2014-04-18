@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/vmihailenco/redis/v2"
 )
@@ -46,6 +47,9 @@ func post_measurements(res http.ResponseWriter, req *http.Request) {
 		s, _ := json.Marshal(m)
 		z := redis.Z{Score: float64(m.T), Member: string(s)}
 		client.ZAdd("measurements:"+m.CheckId, z)
+		now := time.Now()
+		epoch := now.Unix() - 60*60
+		client.ZRemRangeByScore("measurements:"+m.CheckId, "-inf", string(epoch))
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
