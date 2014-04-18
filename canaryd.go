@@ -6,7 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/vmihailenco/redis/v2"
 )
+
+var client *redis.Client
 
 type measurement struct {
 	Id                string  `json:"id"`
@@ -36,10 +40,24 @@ func post_measurements(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	log.Println(measurements)
+	for _, m := range measurements {
+		s, _ := json.Marshal(m)
+
+		z := redis.Z{Score: float64(m.T), Member: string(s)}
+		client.ZAdd("measurements:"+m.CheckId, z)
+
+		log.Println(string(s))
+	}
 }
 
 func main() {
+	client = redis.NewTCPClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	defer client.Close()
+
 	http.HandleFunc("/checks", checks)
 	http.HandleFunc("/measurements", post_measurements)
 
