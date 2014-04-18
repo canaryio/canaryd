@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -e
+
+if ! git diff-index --quiet HEAD ; then
+  echo there are files with uncommited changes. bailing.
+  exit 1
+fi
+
+if ! (u="$(git ls-files --others)" && test -z "$u"); then
+  echo there are untracked files. bailing.
+  exit 1
+fi
+
+DIR=releases
+PACKAGE=${PWD##*/}
+SHA=$(git rev-parse HEAD)
+BUILD=${DIR}/${PACKAGE}.${SHA}
+TARGET=s3://canary-releases
+
+if [ ! -d ${DIR} ]; then
+  mkdir ${DIR}
+fi
+
+godep go install
+godep go build
+
+mv ${PACKAGE} ${BUILD}
+
+s3cmd put ${BUILD} ${TARGET}
+
+echo ${TARGET}/${BUILD}
