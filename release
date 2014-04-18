@@ -7,7 +7,7 @@ if ! git diff-index --quiet HEAD ; then
   exit 1
 fi
 
-if ! (u="$(git ls-files --others)" && test -z "$u"); then
+if ! (u="$(git ls-files --exclude-standard --others)" && test -z "$u"); then
   echo there are untracked files. bailing.
   exit 1
 fi
