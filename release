@@ -18,9 +18,7 @@ SHA=$(git rev-parse HEAD)
 BUILD=${DIR}/${PACKAGE}.${SHA}
 TARGET=s3://canary-releases
 
-if [ ! -d ${DIR} ]; then
-  mkdir ${DIR}
-fi
+mkdir -p ${DIR}
 
 godep go install
 godep go build
