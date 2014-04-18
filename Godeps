@@ -1,0 +1,18 @@
+{
+	"ImportPath": "github.com/gorsuch/canaryd",
+	"GoVersion": "go1.2.1",
+	"Deps": [
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
+		},
+		{
+			"ImportPath": "github.com/vmihailenco/bufio",
+			"Rev": "24e7e48f60fc2d9e99e43c07485d9fff42051e66"
+		},
+		{
+			"ImportPath": "github.com/vmihailenco/redis/v2",
+			"Rev": "f76984bbcf9cc19b0dbba74d85937307ea8509a5"
+		}
+	]
+}
