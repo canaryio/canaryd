@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/vmihailenco/redis/v2"
@@ -50,13 +51,21 @@ func post_measurements(res http.ResponseWriter, req *http.Request) {
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
 }
 
-func main() {
+func connect_to_redis() {
+	u, err := url.Parse(os.Getenv("REDIS_URL"))
+	if err != nil {
+		panic(err)
+	}
+
 	client = redis.NewTCPClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     u.Host,
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
-	defer client.Close()
+}
+
+func main() {
+	connect_to_redis()
 
 	http.HandleFunc("/checks", checks)
 	http.HandleFunc("/measurements", post_measurements)

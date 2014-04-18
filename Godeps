@@ -1,6 +1,0 @@
-{
-	"ImportPath": "github.com/gorsuch/canaryd",
-	"GoVersion": "go1.2.1",
-	"Deps": [
-	]
-}
