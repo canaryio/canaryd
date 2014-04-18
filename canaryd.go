@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/vmihailenco/redis/v2"
@@ -35,7 +36,29 @@ func checks(res http.ResponseWriter, req *http.Request) {
 }
 
 func get_measurements(res http.ResponseWriter, req *http.Request) {
+	now := time.Now()
+	epoch := now.Unix() - 60
 
+	vals, err := client.ZRevRangeByScore("measurements:6224bdee-2ac2-4af4-8fe1-03112f2391d8", redis.ZRangeByScore{
+		Min: strconv.FormatInt(epoch, 10),
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		panic(err)
+	}
+
+	measurements := make([]measurement, 0, 100)
+
+	for _, v := range vals {
+		var m measurement
+		json.Unmarshal([]byte(v), &m)
+		measurements = append(measurements, m)
+	}
+
+	s, _ := json.MarshalIndent(measurements, "", "  ")
+
+	fmt.Fprintf(res, string(s))
 }
 
 func post_measurements(res http.ResponseWriter, req *http.Request) {
