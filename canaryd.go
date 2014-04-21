@@ -80,7 +80,7 @@ func post_measurements(res http.ResponseWriter, req *http.Request) {
 		client.ZAdd("measurements:"+m.CheckId, z)
 		now := time.Now()
 		epoch := now.Unix() - 60*60
-		client.ZRemRangeByScore("measurements:"+m.CheckId, "-inf", string(epoch))
+		client.ZRemRangeByScore("measurements:"+m.CheckId, "-inf", strconv.FormatInt(epoch, 10))
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
