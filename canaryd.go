@@ -35,13 +35,19 @@ type Measurement struct {
 func (m *Measurement) Record() {
 	s, _ := json.Marshal(m)
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
-	client.ZAdd(GetRedisKey(m.CheckId), z)
+	err := client.ZAdd(GetRedisKey(m.CheckId), z)
+	if err != nil {
+		log.Fatal("Error while record measuremnt %s: %v\n", m.Id, err)
+	}
 }
 
 func TrimMeasurements(check_id string, seconds int64) {
 	now := time.Now()
 	epoch := now.Unix() - seconds
-	client.ZRemRangeByScore(GetRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
+	err := client.ZRemRangeByScore(GetRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
+	if err != nil {
+		log.Fatal("Error while trimming check_id %s: %v\n", check_id, err)
+	}
 }
 
 func GetRedisKey(check_id string) string {
