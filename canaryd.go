@@ -137,9 +137,9 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/checks", RedirectToChecksHandler)
-	r.HandleFunc("/checks/{check_id}/measurements", GetMeasurementsHandler)
-	r.HandleFunc("/measurements", PostMeasurementsHandler)
+	r.HandleFunc("/checks", RedirectToChecksHandler).Methods("GET")
+	r.HandleFunc("/checks/{check_id}/measurements", GetMeasurementsHandler).Methods("GET")
+	r.HandleFunc("/measurements", PostMeasurementsHandler).Methods("POST")
 	http.Handle("/", r)
 
 	port := GetenvWithDefault("PORT", "5000")
