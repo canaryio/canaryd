@@ -27,13 +27,13 @@ type Measurement struct {
 	Location          string  `json:"location"`
 	T                 int     `json:"t"`
 	ExitStatus        int     `json:"exit_status"`
-	ConnectTime       float64 `json:"connect_time,omitempty"`
-	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
+	HttpStatus        int     `json:"http_status,omitempty"`
 	LocalIp           string  `json:"local_ip,omitempty"`
 	PrimaryIp         string  `json:"primary_ip,omitempty"`
-	TotalTime         float64 `json:"total_time,omitempty"`
-	HttpStatus        int     `json:"http_status,omitempty"`
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
+	ConnectTime       float64 `json:"connect_time,omitempty"`
+	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
+	TotalTime         float64 `json:"total_time,omitempty"`
 }
 
 func (m *Measurement) Record() {
