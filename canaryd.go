@@ -25,7 +25,6 @@ type Measurement struct {
 	Check             Check   `json:"check"`
 	Id                string  `json:"id"`
 	Location          string  `json:"location"`
-	Url               string  `json:"url"`
 	T                 int     `json:"t"`
 	ExitStatus        int     `json:"exit_status"`
 	ConnectTime       float64 `json:"connect_time,omitempty"`
