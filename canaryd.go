@@ -32,7 +32,7 @@ type Measurement struct {
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 }
 
-func checksRedirect(res http.ResponseWriter, req *http.Request) {
+func redirectToChecks(res http.ResponseWriter, req *http.Request) {
 
 }
 
@@ -104,7 +104,7 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/checks", checksRedirect)
+	r.HandleFunc("/checks", redirectToChecks)
 	r.HandleFunc("/checks/{check_id}/measurements", getMeasurements)
 	r.HandleFunc("/measurements", postMeasurements)
 	http.Handle("/", r)
