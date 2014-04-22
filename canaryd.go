@@ -32,7 +32,7 @@ type Measurement struct {
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 }
 
-func GetEnvWithDefault(key string, def string) string {
+func GetenvWithDefault(key string, def string) string {
 	try := os.Getenv(key)
 
 	if try == "" {
@@ -120,7 +120,7 @@ func main() {
 	r.HandleFunc("/measurements", PostMeasurements)
 	http.Handle("/", r)
 
-	port := GetEnvWithDefault("PORT", "5000")
+	port := GetenvWithDefault("PORT", "5000")
 	fmt.Printf("fn=main listening=true port=%s\n", port)
 
 	err := http.ListenAndServe(":"+port, nil)
