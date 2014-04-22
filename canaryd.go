@@ -16,7 +16,13 @@ import (
 
 var client *redis.Client
 
+type Check struct {
+	Id  string `json:"id"`
+	Url string `json:"url"`
+}
+
 type Measurement struct {
+	Check             Check   `json:"check"`
 	Id                string  `json:"id"`
 	CheckId           string  `json:"check_id"`
 	Location          string  `json:"location"`
