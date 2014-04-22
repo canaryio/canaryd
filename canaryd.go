@@ -16,7 +16,7 @@ import (
 
 var client *redis.Client
 
-type measurement struct {
+type Measurement struct {
 	Id                string  `json:"id"`
 	CheckId           string  `json:"check_id"`
 	Location          string  `json:"location"`
@@ -32,11 +32,11 @@ type measurement struct {
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 }
 
-func checks(res http.ResponseWriter, req *http.Request) {
+func checksRedirect(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func get_measurements(res http.ResponseWriter, req *http.Request) {
+func getMeasurements(res http.ResponseWriter, req *http.Request) {
 	now := time.Now()
 	epoch := now.Unix() - 60
 
@@ -52,10 +52,10 @@ func get_measurements(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	measurements := make([]measurement, 0, 100)
+	measurements := make([]Measurement, 0, 100)
 
 	for _, v := range vals {
-		var m measurement
+		var m Measurement
 		json.Unmarshal([]byte(v), &m)
 		measurements = append(measurements, m)
 	}
@@ -65,9 +65,9 @@ func get_measurements(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, string(s))
 }
 
-func post_measurements(res http.ResponseWriter, req *http.Request) {
+func postMeasurements(res http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
-	measurements := make([]measurement, 0, 100)
+	measurements := make([]Measurement, 0, 100)
 
 	err := decoder.Decode(&measurements)
 	if err != nil {
@@ -86,7 +86,7 @@ func post_measurements(res http.ResponseWriter, req *http.Request) {
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
 }
 
-func connect_to_redis() {
+func ConnectToRedis() {
 	u, err := url.Parse(os.Getenv("REDIS_URL"))
 	if err != nil {
 		panic(err)
@@ -100,13 +100,13 @@ func connect_to_redis() {
 }
 
 func main() {
-	connect_to_redis()
+	ConnectToRedis()
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/checks", checks)
-	r.HandleFunc("/checks/{check_id}/measurements", get_measurements)
-	r.HandleFunc("/measurements", post_measurements)
+	r.HandleFunc("/checks", checksRedirect)
+	r.HandleFunc("/checks/{check_id}/measurements", getMeasurements)
+	r.HandleFunc("/measurements", postMeasurements)
 	http.Handle("/", r)
 
 	fmt.Println("fn=main listening=true")
