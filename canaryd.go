@@ -114,7 +114,7 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 func ConnectToRedis() {
 
-	u, err := url.Parse(os.Getenv("REDIS_URL"))
+	u, err := url.Parse(GetenvWithDefault("REDIS_URL", "redis://localhost:6379"))
 	if err != nil {
 		panic(err)
 	}
