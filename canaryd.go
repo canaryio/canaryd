@@ -117,7 +117,7 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 	for _, m := range measurements {
 		m.Record()
-		TrimMeasurements(m.Check.Id, 60*60)
+		TrimMeasurements(m.Check.Id, 60)
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
