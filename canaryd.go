@@ -32,28 +32,15 @@ type Measurement struct {
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 }
 
-func GetenvWithDefault(key string, def string) string {
-	try := os.Getenv(key)
-
-	if try == "" {
-		return def
-	}
-
-	return try
+func GetRedisKey(check_id string) string {
+	return "measurements:" + check_id
 }
 
-func RedirectToChecksHandler(res http.ResponseWriter, req *http.Request) {
-
-}
-
-func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
+func GetLatestMeasurements(check_id string) []Measurement {
 	now := time.Now()
 	epoch := now.Unix() - 60
 
-	vars := mux.Vars(req)
-	check_id := vars["check_id"]
-
-	vals, err := client.ZRevRangeByScore("measurements:"+check_id, redis.ZRangeByScore{
+	vals, err := client.ZRevRangeByScore(GetRedisKey(check_id), redis.ZRangeByScore{
 		Min: strconv.FormatInt(epoch, 10),
 		Max: "+inf",
 	}).Result()
@@ -70,7 +57,28 @@ func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 		measurements = append(measurements, m)
 	}
 
-	s, _ := json.MarshalIndent(measurements, "", "  ")
+	return measurements
+}
+
+func GetenvWithDefault(key string, def string) string {
+	try := os.Getenv(key)
+
+	if try == "" {
+		return def
+	}
+
+	return try
+}
+
+func RedirectToChecksHandler(res http.ResponseWriter, req *http.Request) {
+
+}
+
+func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	check_id := vars["check_id"]
+
+	s, _ := json.MarshalIndent(GetLatestMeasurements(check_id), "", "  ")
 
 	fmt.Fprintf(res, string(s))
 }
