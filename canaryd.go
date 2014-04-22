@@ -83,7 +83,8 @@ func GetenvWithDefault(key string, def string) string {
 }
 
 func RedirectToChecksHandler(res http.ResponseWriter, req *http.Request) {
-
+	checks_url := GetenvWithDefault("CHECKS_URL", "https://s3.amazonaws.com/canary-public-data/data.json")
+	http.Redirect(res, req, checks_url, http.StatusFound)
 }
 
 func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
@@ -113,7 +114,6 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func ConnectToRedis() {
-
 	u, err := url.Parse(GetenvWithDefault("REDIS_URL", "redis://localhost:6379"))
 	if err != nil {
 		panic(err)
