@@ -32,6 +32,12 @@ type Measurement struct {
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 }
 
+func (m *Measurement) Record() {
+	s, _ := json.Marshal(m)
+	z := redis.Z{Score: float64(m.T), Member: string(s)}
+	client.ZAdd(GetRedisKey(m.CheckId), z)
+}
+
 func GetRedisKey(check_id string) string {
 	return "measurements:" + check_id
 }
@@ -93,9 +99,8 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, m := range measurements {
-		s, _ := json.Marshal(m)
-		z := redis.Z{Score: float64(m.T), Member: string(s)}
-		client.ZAdd("measurements:"+m.CheckId, z)
+		m.Record()
+
 		now := time.Now()
 		epoch := now.Unix() - 60*60
 		client.ZRemRangeByScore("measurements:"+m.CheckId, "-inf", strconv.FormatInt(epoch, 10))
