@@ -24,7 +24,6 @@ type Check struct {
 type Measurement struct {
 	Check             Check   `json:"check"`
 	Id                string  `json:"id"`
-	CheckId           string  `json:"check_id"`
 	Location          string  `json:"location"`
 	Url               string  `json:"url"`
 	T                 int     `json:"t"`
@@ -41,7 +40,7 @@ type Measurement struct {
 func (m *Measurement) Record() {
 	s, _ := json.Marshal(m)
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
-	r := client.ZAdd(GetRedisKey(m.CheckId), z)
+	r := client.ZAdd(GetRedisKey(m.Check.Id), z)
 	if r.Err() != nil {
 		log.Fatalf("Error while recording measuremnt %s: %v\n", m.Id, r.Err())
 	}
@@ -119,7 +118,7 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 	for _, m := range measurements {
 		m.Record()
-		TrimMeasurements(m.CheckId, 60*60)
+		TrimMeasurements(m.Check.Id, 60*60)
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
