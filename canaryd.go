@@ -38,6 +38,12 @@ func (m *Measurement) Record() {
 	client.ZAdd(GetRedisKey(m.CheckId), z)
 }
 
+func TrimMeasurements(check_id string, seconds int64) {
+	now := time.Now()
+	epoch := now.Unix() - seconds
+	client.ZRemRangeByScore(GetRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
+}
+
 func GetRedisKey(check_id string) string {
 	return "measurements:" + check_id
 }
@@ -100,10 +106,7 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 	for _, m := range measurements {
 		m.Record()
-
-		now := time.Now()
-		epoch := now.Unix() - 60*60
-		client.ZRemRangeByScore("measurements:"+m.CheckId, "-inf", strconv.FormatInt(epoch, 10))
+		TrimMeasurements(m.CheckId, 60*60)
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
