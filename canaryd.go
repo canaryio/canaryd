@@ -42,11 +42,11 @@ func GetenvWithDefault(key string, def string) string {
 	return try
 }
 
-func RedirectToChecks(res http.ResponseWriter, req *http.Request) {
+func RedirectToChecksHandler(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func GetMeasurements(res http.ResponseWriter, req *http.Request) {
+func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	now := time.Now()
 	epoch := now.Unix() - 60
 
@@ -75,7 +75,7 @@ func GetMeasurements(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, string(s))
 }
 
-func PostMeasurements(res http.ResponseWriter, req *http.Request) {
+func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	measurements := make([]Measurement, 0, 100)
 
@@ -115,9 +115,9 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/checks", RedirectToChecks)
-	r.HandleFunc("/checks/{check_id}/measurements", GetMeasurements)
-	r.HandleFunc("/measurements", PostMeasurements)
+	r.HandleFunc("/checks", RedirectToChecksHandler)
+	r.HandleFunc("/checks/{check_id}/measurements", GetMeasurementsHandler)
+	r.HandleFunc("/measurements", PostMeasurementsHandler)
 	http.Handle("/", r)
 
 	port := GetenvWithDefault("PORT", "5000")
