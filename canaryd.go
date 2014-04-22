@@ -32,7 +32,7 @@ type Measurement struct {
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 }
 
-func getEnvWithDefault(key string, def string) string {
+func GetEnvWithDefault(key string, def string) string {
 	try := os.Getenv(key)
 
 	if try == "" {
@@ -42,11 +42,11 @@ func getEnvWithDefault(key string, def string) string {
 	return try
 }
 
-func redirectToChecks(res http.ResponseWriter, req *http.Request) {
+func RedirectToChecks(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func getMeasurements(res http.ResponseWriter, req *http.Request) {
+func GetMeasurements(res http.ResponseWriter, req *http.Request) {
 	now := time.Now()
 	epoch := now.Unix() - 60
 
@@ -75,7 +75,7 @@ func getMeasurements(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, string(s))
 }
 
-func postMeasurements(res http.ResponseWriter, req *http.Request) {
+func PostMeasurements(res http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	measurements := make([]Measurement, 0, 100)
 
@@ -97,6 +97,7 @@ func postMeasurements(res http.ResponseWriter, req *http.Request) {
 }
 
 func ConnectToRedis() {
+
 	u, err := url.Parse(os.Getenv("REDIS_URL"))
 	if err != nil {
 		panic(err)
@@ -114,12 +115,12 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/checks", redirectToChecks)
-	r.HandleFunc("/checks/{check_id}/measurements", getMeasurements)
-	r.HandleFunc("/measurements", postMeasurements)
+	r.HandleFunc("/checks", RedirectToChecks)
+	r.HandleFunc("/checks/{check_id}/measurements", GetMeasurements)
+	r.HandleFunc("/measurements", PostMeasurements)
 	http.Handle("/", r)
 
-	port := getEnvWithDefault("PORT", "5000")
+	port := GetEnvWithDefault("PORT", "5000")
 	fmt.Printf("fn=main listening=true port=%s\n", port)
 
 	err := http.ListenAndServe(":"+port, nil)
