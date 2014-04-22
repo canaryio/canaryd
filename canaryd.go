@@ -121,6 +121,7 @@ func main() {
 
 	port := getEnvWithDefault("PORT", "5000")
 	fmt.Printf("fn=main listening=true port=%s\n", port)
+
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		panic(err)
