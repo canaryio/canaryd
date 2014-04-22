@@ -37,7 +37,7 @@ func (m *Measurement) Record() {
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
 	err := client.ZAdd(GetRedisKey(m.CheckId), z)
 	if err != nil {
-		log.Fatal("Error while record measuremnt %s: %v\n", m.Id, err)
+		log.Fatalf("Error while recording measuremnt %s: %v\n", m.Id, err)
 	}
 }
 
@@ -46,7 +46,7 @@ func TrimMeasurements(check_id string, seconds int64) {
 	epoch := now.Unix() - seconds
 	err := client.ZRemRangeByScore(GetRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
 	if err != nil {
-		log.Fatal("Error while trimming check_id %s: %v\n", check_id, err)
+		log.Fatalf("Error while trimming check_id %s: %v\n", check_id, err)
 	}
 }
 
