@@ -17,8 +17,10 @@ import (
 var client *redis.Client
 
 type Event struct {
-	Context string  `json:"context"`
-	Metric  float64 `json:"metric"`
+	Id          string  `json:"id"`
+	Transaction string  `json:"transaction"`
+	Context     string  `json:"context"`
+	Metric      float64 `json:"metric"`
 }
 
 type Check struct {
