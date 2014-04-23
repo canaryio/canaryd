@@ -134,7 +134,8 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 		TrimMeasurements(m.Check.Id, 60)
 	}
 
-	log.Printf("fn=post_measurements count=%d\n", len(measurements))
+	e := Event{Type: "counter", Name: "record", Metric: len(measurements)}
+	e.Emit()
 }
 
 func ConnectToRedis() {
