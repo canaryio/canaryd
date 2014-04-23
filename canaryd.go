@@ -134,7 +134,7 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 		TrimMeasurements(m.Check.Id, 60)
 	}
 
-	e := Event{Type: "counter", Name: "record", Metric: len(measurements)}
+	e := Event{Type: "counter", Name: "record", Metric: float64(len(measurements))}
 	e.Emit()
 }
 
