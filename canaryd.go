@@ -43,6 +43,11 @@ type Measurement struct {
 	TotalTime         float64 `json:"total_time,omitempty"`
 }
 
+func (e *Event) Emit() {
+	json, _ := json.Marshal(e)
+	fmt.Printf("%v\n", string(json))
+}
+
 func (m *Measurement) Record() {
 	s, _ := json.Marshal(m)
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
@@ -154,7 +159,9 @@ func main() {
 	http.Handle("/", r)
 
 	port := GetenvWithDefault("PORT", "5000")
-	log.Printf("fn=main listening=true port=%s\n", port)
+
+	e := Event{Context: "main.listen.port", Metric: 5000.0}
+	e.Emit()
 
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
