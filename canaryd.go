@@ -19,8 +19,10 @@ var client *redis.Client
 type Event struct {
 	Id          string  `json:"id"`
 	Transaction string  `json:"transaction"`
-	Context     string  `json:"context"`
+	Name        string  `json:"name"`
+	Type        string  `json:"type"`
 	Metric      float64 `json:"metric"`
+	Message     string  `json:"message"`
 }
 
 type Check struct {
@@ -160,7 +162,7 @@ func main() {
 
 	port := GetenvWithDefault("PORT", "5000")
 
-	e := Event{Context: "main.listen.port", Metric: 5000.0}
+	e := Event{Type: "counter", Name: "main.listen"}
 	e.Emit()
 
 	err := http.ListenAndServe(":"+port, nil)
