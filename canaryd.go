@@ -16,6 +16,15 @@ import (
 
 var client *redis.Client
 
+type Event struct {
+	Id          string  `json:"id"`
+	Transaction string  `json:"transaction"`
+	Name        string  `json:"name"`
+	Type        string  `json:"type"`
+	Metric      float64 `json:"metric"`
+	Message     string  `json:"message"`
+}
+
 type Check struct {
 	Id  string `json:"id"`
 	Url string `json:"url"`
@@ -34,6 +43,11 @@ type Measurement struct {
 	ConnectTime       float64 `json:"connect_time,omitempty"`
 	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
 	TotalTime         float64 `json:"total_time,omitempty"`
+}
+
+func (e *Event) Emit() {
+	json, _ := json.Marshal(e)
+	fmt.Printf("%v\n", string(json))
 }
 
 func (m *Measurement) Record() {
@@ -120,7 +134,8 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 		TrimMeasurements(m.Check.Id, 60)
 	}
 
-	log.Printf("fn=post_measurements count=%d\n", len(measurements))
+	e := Event{Type: "counter", Name: "record", Metric: float64(len(measurements))}
+	e.Emit()
 }
 
 func ConnectToRedis() {
@@ -147,7 +162,9 @@ func main() {
 	http.Handle("/", r)
 
 	port := GetenvWithDefault("PORT", "5000")
-	log.Printf("fn=main listening=true port=%s\n", port)
+
+	e := Event{Type: "counter", Name: "main.listen"}
+	e.Emit()
 
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
