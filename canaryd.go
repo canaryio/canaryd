@@ -92,11 +92,6 @@ func GetenvWithDefault(key string, def string) string {
 	return try
 }
 
-func RedirectToChecksHandler(res http.ResponseWriter, req *http.Request) {
-	checks_url := GetenvWithDefault("CHECKS_URL", "https://s3.amazonaws.com/canary-public-data/data.json")
-	http.Redirect(res, req, checks_url, http.StatusFound)
-}
-
 func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
@@ -141,7 +136,6 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/checks", RedirectToChecksHandler).Methods("GET")
 	r.HandleFunc("/checks/{check_id}/measurements", GetMeasurementsHandler).Methods("GET")
 	r.HandleFunc("/measurements", PostMeasurementsHandler).Methods("POST")
 	http.Handle("/", r)
