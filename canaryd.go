@@ -98,6 +98,7 @@ func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 	s, _ := json.MarshalIndent(GetLatestMeasurements(check_id), "", "  ")
 
+	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(res, string(s))
 }
 
