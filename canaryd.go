@@ -100,9 +100,8 @@ func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
 
-	now := time.Now()
-	from := now.Unix() - 10
-	s, _ := json.MarshalIndent(GetMeasurementsByFrom(check_id, from), "", "  ")
+	r := int64(10)
+	s, _ := json.MarshalIndent(GetMeasurementsByRange(check_id, r), "", "  ")
 
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(res, string(s))
