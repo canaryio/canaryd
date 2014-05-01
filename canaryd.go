@@ -99,7 +99,7 @@ func GetenvWithDefault(key string, def string) string {
 func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
-	r_s := vars["range"]
+	r_s := req.FormValue("range")
 	var s []byte
 
 	if r_s != "" {
