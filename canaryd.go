@@ -99,9 +99,20 @@ func GetenvWithDefault(key string, def string) string {
 func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
+	r_s := vars["range"]
+	var s []byte
 
-	r := int64(10)
-	s, _ := json.MarshalIndent(GetMeasurementsByRange(check_id, r), "", "  ")
+	if r_s != "" {
+		r, err := strconv.ParseInt(r_s, 10, 64)
+		if err != nil {
+			panic(nil)
+		}
+		s, _ = json.MarshalIndent(GetMeasurementsByRange(check_id, r), "", "  ")
+
+	} else {
+		r := int64(10)
+		s, _ = json.MarshalIndent(GetMeasurementsByRange(check_id, r), "", "  ")
+	}
 
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(res, string(s))
