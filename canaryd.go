@@ -60,7 +60,7 @@ func GetRedisKey(check_id string) string {
 
 func GetLatestMeasurements(check_id string) []Measurement {
 	now := time.Now()
-	epoch := now.Unix() - 60
+	epoch := now.Unix() - 10
 
 	vals, err := client.ZRevRangeByScore(GetRedisKey(check_id), redis.ZRangeByScore{
 		Min: strconv.FormatInt(epoch, 10),
