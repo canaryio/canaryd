@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -96,26 +95,26 @@ func GetenvWithDefault(key string, def string) string {
 	return try
 }
 
+func GetFormValueWithDefault(req *http.Request, key string, def string) string {
+	s := req.FormValue(key)
+	if s != "" {
+		return s
+	} else {
+		return def
+	}
+}
+
 func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
-	r_s := req.FormValue("range")
-	var s []byte
+	r_s := GetFormValueWithDefault(req, "range", "10")
 
-	if r_s != "" {
-		r, err := strconv.ParseInt(r_s, 10, 64)
-		if err != nil {
-			panic(nil)
-		}
-		s, _ = json.MarshalIndent(GetMeasurementsByRange(check_id, r), "", "  ")
-
-	} else {
-		r := int64(10)
-		s, _ = json.MarshalIndent(GetMeasurementsByRange(check_id, r), "", "  ")
+	r, err := strconv.ParseInt(r_s, 10, 64)
+	if err != nil {
+		panic(nil)
 	}
-
 	res.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(res, string(s))
+	json.NewEncoder(res).Encode(GetMeasurementsByRange(check_id, r))
 }
 
 func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
