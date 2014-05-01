@@ -58,12 +58,9 @@ func GetRedisKey(check_id string) string {
 	return "measurements:" + check_id
 }
 
-func GetLatestMeasurements(check_id string) []Measurement {
-	now := time.Now()
-	epoch := now.Unix() - 10
-
+func GetLatestMeasurements(check_id string, from int64) []Measurement {
 	vals, err := client.ZRevRangeByScore(GetRedisKey(check_id), redis.ZRangeByScore{
-		Min: strconv.FormatInt(epoch, 10),
+		Min: strconv.FormatInt(from, 10),
 		Max: "+inf",
 	}).Result()
 
@@ -96,7 +93,9 @@ func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
 
-	s, _ := json.MarshalIndent(GetLatestMeasurements(check_id), "", "  ")
+	now := time.Now()
+	from := now.Unix() - 10
+	s, _ := json.MarshalIndent(GetLatestMeasurements(check_id, from), "", "  ")
 
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(res, string(s))
