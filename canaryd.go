@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -58,12 +57,16 @@ func GetRedisKey(check_id string) string {
 	return "measurements:" + check_id
 }
 
-func GetLatestMeasurements(check_id string) []Measurement {
+func GetMeasurementsByRange(check_id string, r int64) []Measurement {
 	now := time.Now()
-	epoch := now.Unix() - 10
+	from := now.Unix() - r
 
+	return GetMeasurementsByFrom(check_id, from)
+}
+
+func GetMeasurementsByFrom(check_id string, from int64) []Measurement {
 	vals, err := client.ZRevRangeByScore(GetRedisKey(check_id), redis.ZRangeByScore{
-		Min: strconv.FormatInt(epoch, 10),
+		Min: strconv.FormatInt(from, 10),
 		Max: "+inf",
 	}).Result()
 
@@ -92,14 +95,26 @@ func GetenvWithDefault(key string, def string) string {
 	return try
 }
 
+func GetFormValueWithDefault(req *http.Request, key string, def string) string {
+	s := req.FormValue(key)
+	if s != "" {
+		return s
+	} else {
+		return def
+	}
+}
+
 func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
+	r_s := GetFormValueWithDefault(req, "range", "10")
 
-	s, _ := json.MarshalIndent(GetLatestMeasurements(check_id), "", "  ")
-
+	r, err := strconv.ParseInt(r_s, 10, 64)
+	if err != nil {
+		panic(nil)
+	}
 	res.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(res, string(s))
+	json.NewEncoder(res).Encode(GetMeasurementsByRange(check_id, r))
 }
 
 func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
