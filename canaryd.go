@@ -13,11 +13,13 @@ import (
 	"github.com/vmihailenco/redis/v2"
 )
 
+var config Config
 var client *redis.Client
 
 type Config struct {
-	Port     string
-	RedisURL string
+	Port      string
+	RedisURL  string
+	Retention int64
 }
 
 type Check struct {
@@ -123,7 +125,7 @@ func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 	for _, m := range measurements {
 		m.record()
-		trimMeasurements(m.Check.Id, 60)
+		trimMeasurements(m.Check.Id, config.Retention)
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
@@ -143,9 +145,10 @@ func connectToRedis(config Config) {
 }
 
 func main() {
-	config := Config{}
+	config = Config{}
 	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
+	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
 	flag.Parse()
 
 	connectToRedis(config)
