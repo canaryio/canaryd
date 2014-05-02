@@ -129,8 +129,8 @@ func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
 }
 
-func connectToRedis(redisURL string) {
-	u, err := url.Parse(redisURL)
+func connectToRedis(config Config) {
+	u, err := url.Parse(config.RedisURL)
 	if err != nil {
 		panic(err)
 	}
@@ -148,7 +148,7 @@ func main() {
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
 	flag.Parse()
 
-	connectToRedis(config.RedisURL)
+	connectToRedis(config)
 
 	r := mux.NewRouter()
 
