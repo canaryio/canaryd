@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"time"
 
@@ -14,6 +14,11 @@ import (
 )
 
 var client *redis.Client
+
+type Config struct {
+	Port     string
+	RedisURL string
+}
 
 type Check struct {
 	Id  string `json:"id"`
@@ -85,16 +90,6 @@ func getMeasurementsFrom(check_id string, from int64) []Measurement {
 	return measurements
 }
 
-func getEnvWithDefault(key string, def string) string {
-	try := os.Getenv(key)
-
-	if try == "" {
-		return def
-	}
-
-	return try
-}
-
 func getFormValueWithDefault(req *http.Request, key string, def string) string {
 	s := req.FormValue(key)
 	if s != "" {
@@ -134,8 +129,8 @@ func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
 }
 
-func connectToRedis() {
-	u, err := url.Parse(getEnvWithDefault("REDIS_URL", "redis://localhost:6379"))
+func connectToRedis(redisURL string) {
+	u, err := url.Parse(redisURL)
 	if err != nil {
 		panic(err)
 	}
@@ -148,7 +143,12 @@ func connectToRedis() {
 }
 
 func main() {
-	connectToRedis()
+	config := Config{}
+	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
+	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
+	flag.Parse()
+
+	connectToRedis(config.RedisURL)
 
 	r := mux.NewRouter()
 
@@ -156,10 +156,9 @@ func main() {
 	r.HandleFunc("/measurements", postMeasurementsHandler).Methods("POST")
 	http.Handle("/", r)
 
-	port := getEnvWithDefault("PORT", "5000")
-	log.Printf("fn=main listening=true port=%s\n", port)
+	log.Printf("fn=main listening=true port=%s\n", config.Port)
 
-	err := http.ListenAndServe(":"+port, nil)
+	err := http.ListenAndServe(":"+config.Port, nil)
 	if err != nil {
 		panic(err)
 	}
