@@ -35,37 +35,37 @@ type Measurement struct {
 	TotalTime         float64 `json:"total_time,omitempty"`
 }
 
-func (m *Measurement) Record() {
+func (m *Measurement) record() {
 	s, _ := json.Marshal(m)
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
-	r := client.ZAdd(GetRedisKey(m.Check.Id), z)
+	r := client.ZAdd(getRedisKey(m.Check.Id), z)
 	if r.Err() != nil {
 		log.Fatalf("Error while recording measuremnt %s: %v\n", m.Id, r.Err())
 	}
 }
 
-func TrimMeasurements(check_id string, seconds int64) {
+func trimMeasurements(check_id string, seconds int64) {
 	now := time.Now()
 	epoch := now.Unix() - seconds
-	r := client.ZRemRangeByScore(GetRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
+	r := client.ZRemRangeByScore(getRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
 	if r.Err() != nil {
 		log.Fatalf("Error while trimming check_id %s: %v\n", check_id, r.Err())
 	}
 }
 
-func GetRedisKey(check_id string) string {
+func getRedisKey(check_id string) string {
 	return "measurements:" + check_id
 }
 
-func GetMeasurementsByRange(check_id string, r int64) []Measurement {
+func getMeasurementsByRange(check_id string, r int64) []Measurement {
 	now := time.Now()
 	from := now.Unix() - r
 
-	return GetMeasurementsByFrom(check_id, from)
+	return getMeasurementsFrom(check_id, from)
 }
 
-func GetMeasurementsByFrom(check_id string, from int64) []Measurement {
-	vals, err := client.ZRevRangeByScore(GetRedisKey(check_id), redis.ZRangeByScore{
+func getMeasurementsFrom(check_id string, from int64) []Measurement {
+	vals, err := client.ZRevRangeByScore(getRedisKey(check_id), redis.ZRangeByScore{
 		Min: strconv.FormatInt(from, 10),
 		Max: "+inf",
 	}).Result()
@@ -85,7 +85,7 @@ func GetMeasurementsByFrom(check_id string, from int64) []Measurement {
 	return measurements
 }
 
-func GetenvWithDefault(key string, def string) string {
+func getEnvWithDefault(key string, def string) string {
 	try := os.Getenv(key)
 
 	if try == "" {
@@ -95,7 +95,7 @@ func GetenvWithDefault(key string, def string) string {
 	return try
 }
 
-func GetFormValueWithDefault(req *http.Request, key string, def string) string {
+func getFormValueWithDefault(req *http.Request, key string, def string) string {
 	s := req.FormValue(key)
 	if s != "" {
 		return s
@@ -104,20 +104,20 @@ func GetFormValueWithDefault(req *http.Request, key string, def string) string {
 	}
 }
 
-func GetMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
+func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	check_id := vars["check_id"]
-	r_s := GetFormValueWithDefault(req, "range", "10")
+	r_s := getFormValueWithDefault(req, "range", "10")
 
 	r, err := strconv.ParseInt(r_s, 10, 64)
 	if err != nil {
 		panic(nil)
 	}
 	res.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(res).Encode(GetMeasurementsByRange(check_id, r))
+	json.NewEncoder(res).Encode(getMeasurementsByRange(check_id, r))
 }
 
-func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
+func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	measurements := make([]Measurement, 0, 100)
 
@@ -127,15 +127,15 @@ func PostMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, m := range measurements {
-		m.Record()
-		TrimMeasurements(m.Check.Id, 60)
+		m.record()
+		trimMeasurements(m.Check.Id, 60)
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
 }
 
-func ConnectToRedis() {
-	u, err := url.Parse(GetenvWithDefault("REDIS_URL", "redis://localhost:6379"))
+func connectToRedis() {
+	u, err := url.Parse(getEnvWithDefault("REDIS_URL", "redis://localhost:6379"))
 	if err != nil {
 		panic(err)
 	}
@@ -148,15 +148,15 @@ func ConnectToRedis() {
 }
 
 func main() {
-	ConnectToRedis()
+	connectToRedis()
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/checks/{check_id}/measurements", GetMeasurementsHandler).Methods("GET")
-	r.HandleFunc("/measurements", PostMeasurementsHandler).Methods("POST")
+	r.HandleFunc("/checks/{check_id}/measurements", getMeasurementsHandler).Methods("GET")
+	r.HandleFunc("/measurements", postMeasurementsHandler).Methods("POST")
 	http.Handle("/", r)
 
-	port := GetenvWithDefault("PORT", "5000")
+	port := getEnvWithDefault("PORT", "5000")
 	log.Printf("fn=main listening=true port=%s\n", port)
 
 	err := http.ListenAndServe(":"+port, nil)
