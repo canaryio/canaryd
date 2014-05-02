@@ -35,7 +35,11 @@ Measurements are stored within a Redis database, with a sorted set being allocat
 
 ### Configuration
 
-`canaryd` is configured via environment variables.
+`canaryd` is configured via flags.
 
-* `PORT` - what port should the http service bind to? Defaults to `5000`
-* `REDIS_URL` - what redis instance shall we send our measurement data to?  Defaults to `redis://localhost:6379`
+```sh
+$ ./canaryd -h
+Usage of ./canaryd:
+  -port="5000": port the HTTP server should bind to
+  -redis_url="redis://localhost:6379": redis url
+```
