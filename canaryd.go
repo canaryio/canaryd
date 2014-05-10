@@ -40,6 +40,7 @@ type Measurement struct {
 	ConnectTime       float64 `json:"connect_time,omitempty"`
 	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
 	TotalTime         float64 `json:"total_time,omitempty"`
+	SizeDownload      float64 `json:"size_download,omitempty"`
 }
 
 func (m *Measurement) record() {
