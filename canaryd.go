@@ -144,11 +144,13 @@ func connectToRedis(config Config) {
 	})
 }
 
-func main() {
-	config = Config{}
+func init() {
 	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
 	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
+}
+
+func main() {
 	flag.Parse()
 
 	connectToRedis(config)
