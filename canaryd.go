@@ -97,9 +97,8 @@ func getFormValueWithDefault(req *http.Request, key string, def string) string {
 	s := req.FormValue(key)
 	if s != "" {
 		return s
-	} else {
-		return def
 	}
+	return def
 }
 
 func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
