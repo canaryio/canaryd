@@ -23,19 +23,19 @@ type Config struct {
 }
 
 type Check struct {
-	Id  string `json:"id"`
-	Url string `json:"url"`
+	ID  string `json:"id"`
+	URL string `json:"url"`
 }
 
 type Measurement struct {
 	Check             Check   `json:"check"`
-	Id                string  `json:"id"`
+	ID                string  `json:"id"`
 	Location          string  `json:"location"`
 	T                 int     `json:"t"`
 	ExitStatus        int     `json:"exit_status"`
-	HttpStatus        int     `json:"http_status,omitempty"`
-	LocalIp           string  `json:"local_ip,omitempty"`
-	PrimaryIp         string  `json:"primary_ip,omitempty"`
+	HTTPStatus        int     `json:"http_status,omitempty"`
+	LocalIP           string  `json:"local_ip,omitempty"`
+	PrimaryIP         string  `json:"primary_ip,omitempty"`
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 	ConnectTime       float64 `json:"connect_time,omitempty"`
 	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
@@ -46,34 +46,34 @@ type Measurement struct {
 func (m *Measurement) record() {
 	s, _ := json.Marshal(m)
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
-	r := client.ZAdd(getRedisKey(m.Check.Id), z)
+	r := client.ZAdd(getRedisKey(m.Check.ID), z)
 	if r.Err() != nil {
-		log.Fatalf("Error while recording measurement %s: %v\n", m.Id, r.Err())
+		log.Fatalf("Error while recording measurement %s: %v\n", m.ID, r.Err())
 	}
 }
 
-func trimMeasurements(check_id string, seconds int64) {
+func trimMeasurements(checkID string, seconds int64) {
 	now := time.Now()
 	epoch := now.Unix() - seconds
-	r := client.ZRemRangeByScore(getRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
+	r := client.ZRemRangeByScore(getRedisKey(checkID), "-inf", strconv.FormatInt(epoch, 10))
 	if r.Err() != nil {
-		log.Fatalf("Error while trimming check_id %s: %v\n", check_id, r.Err())
+		log.Fatalf("Error while trimming check_id %s: %v\n", checkID, r.Err())
 	}
 }
 
-func getRedisKey(check_id string) string {
-	return "measurements:" + check_id
+func getRedisKey(checkID string) string {
+	return "measurements:" + checkID
 }
 
-func getMeasurementsByRange(check_id string, r int64) []Measurement {
+func getMeasurementsByRange(checkID string, r int64) []Measurement {
 	now := time.Now()
 	from := now.Unix() - r
 
-	return getMeasurementsFrom(check_id, from)
+	return getMeasurementsFrom(checkID, from)
 }
 
-func getMeasurementsFrom(check_id string, from int64) []Measurement {
-	vals, err := client.ZRevRangeByScore(getRedisKey(check_id), redis.ZRangeByScore{
+func getMeasurementsFrom(checkID string, from int64) []Measurement {
+	vals, err := client.ZRevRangeByScore(getRedisKey(checkID), redis.ZRangeByScore{
 		Min: strconv.FormatInt(from, 10),
 		Max: "+inf",
 	}).Result()
@@ -97,22 +97,21 @@ func getFormValueWithDefault(req *http.Request, key string, def string) string {
 	s := req.FormValue(key)
 	if s != "" {
 		return s
-	} else {
-		return def
 	}
+	return def
 }
 
 func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	check_id := vars["check_id"]
-	r_s := getFormValueWithDefault(req, "range", "10")
+	checkID := vars["check_id"]
+	rS := getFormValueWithDefault(req, "range", "10")
 
-	r, err := strconv.ParseInt(r_s, 10, 64)
+	r, err := strconv.ParseInt(rS, 10, 64)
 	if err != nil {
 		panic(nil)
 	}
 	res.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(res).Encode(getMeasurementsByRange(check_id, r))
+	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 }
 
 func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
@@ -126,7 +125,7 @@ func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 	for _, m := range measurements {
 		m.record()
-		trimMeasurements(m.Check.Id, config.Retention)
+		trimMeasurements(m.Check.ID, config.Retention)
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
