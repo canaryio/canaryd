@@ -105,9 +105,9 @@ func getFormValueWithDefault(req *http.Request, key string, def string) string {
 func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	checkID := vars["check_id"]
-	r_s := getFormValueWithDefault(req, "range", "10")
+	rS := getFormValueWithDefault(req, "range", "10")
 
-	r, err := strconv.ParseInt(r_s, 10, 64)
+	r, err := strconv.ParseInt(rS, 10, 64)
 	if err != nil {
 		panic(nil)
 	}
