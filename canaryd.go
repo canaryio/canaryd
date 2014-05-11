@@ -52,28 +52,28 @@ func (m *Measurement) record() {
 	}
 }
 
-func trimMeasurements(check_id string, seconds int64) {
+func trimMeasurements(checkID string, seconds int64) {
 	now := time.Now()
 	epoch := now.Unix() - seconds
-	r := client.ZRemRangeByScore(getRedisKey(check_id), "-inf", strconv.FormatInt(epoch, 10))
+	r := client.ZRemRangeByScore(getRedisKey(checkID), "-inf", strconv.FormatInt(epoch, 10))
 	if r.Err() != nil {
-		log.Fatalf("Error while trimming check_id %s: %v\n", check_id, r.Err())
+		log.Fatalf("Error while trimming check_id %s: %v\n", checkID, r.Err())
 	}
 }
 
-func getRedisKey(check_id string) string {
-	return "measurements:" + check_id
+func getRedisKey(checkID string) string {
+	return "measurements:" + checkID
 }
 
-func getMeasurementsByRange(check_id string, r int64) []Measurement {
+func getMeasurementsByRange(checkID string, r int64) []Measurement {
 	now := time.Now()
 	from := now.Unix() - r
 
-	return getMeasurementsFrom(check_id, from)
+	return getMeasurementsFrom(checkID, from)
 }
 
-func getMeasurementsFrom(check_id string, from int64) []Measurement {
-	vals, err := client.ZRevRangeByScore(getRedisKey(check_id), redis.ZRangeByScore{
+func getMeasurementsFrom(checkID string, from int64) []Measurement {
+	vals, err := client.ZRevRangeByScore(getRedisKey(checkID), redis.ZRangeByScore{
 		Min: strconv.FormatInt(from, 10),
 		Max: "+inf",
 	}).Result()
@@ -104,7 +104,7 @@ func getFormValueWithDefault(req *http.Request, key string, def string) string {
 
 func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	check_id := vars["check_id"]
+	checkID := vars["check_id"]
 	r_s := getFormValueWithDefault(req, "range", "10")
 
 	r, err := strconv.ParseInt(r_s, 10, 64)
@@ -112,7 +112,7 @@ func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 		panic(nil)
 	}
 	res.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(res).Encode(getMeasurementsByRange(check_id, r))
+	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 }
 
 func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
