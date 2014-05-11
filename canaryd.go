@@ -23,19 +23,19 @@ type Config struct {
 }
 
 type Check struct {
-	Id  string `json:"id"`
-	Url string `json:"url"`
+	ID  string `json:"id"`
+	URL string `json:"url"`
 }
 
 type Measurement struct {
 	Check             Check   `json:"check"`
-	Id                string  `json:"id"`
+	ID                string  `json:"id"`
 	Location          string  `json:"location"`
 	T                 int     `json:"t"`
 	ExitStatus        int     `json:"exit_status"`
-	HttpStatus        int     `json:"http_status,omitempty"`
-	LocalIp           string  `json:"local_ip,omitempty"`
-	PrimaryIp         string  `json:"primary_ip,omitempty"`
+	HTTPStatus        int     `json:"http_status,omitempty"`
+	LocalIP           string  `json:"local_ip,omitempty"`
+	PrimaryIP         string  `json:"primary_ip,omitempty"`
 	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
 	ConnectTime       float64 `json:"connect_time,omitempty"`
 	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
@@ -46,9 +46,9 @@ type Measurement struct {
 func (m *Measurement) record() {
 	s, _ := json.Marshal(m)
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
-	r := client.ZAdd(getRedisKey(m.Check.Id), z)
+	r := client.ZAdd(getRedisKey(m.Check.ID), z)
 	if r.Err() != nil {
-		log.Fatalf("Error while recording measuremnt %s: %v\n", m.Id, r.Err())
+		log.Fatalf("Error while recording measuremnt %s: %v\n", m.ID, r.Err())
 	}
 }
 
@@ -125,7 +125,7 @@ func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 
 	for _, m := range measurements {
 		m.record()
-		trimMeasurements(m.Check.Id, config.Retention)
+		trimMeasurements(m.Check.ID, config.Retention)
 	}
 
 	log.Printf("fn=post_measurements count=%d\n", len(measurements))
