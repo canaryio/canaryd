@@ -48,7 +48,7 @@ func (m *Measurement) record() {
 	z := redis.Z{Score: float64(m.T), Member: string(s)}
 	r := client.ZAdd(getRedisKey(m.Check.Id), z)
 	if r.Err() != nil {
-		log.Fatalf("Error while recording measuremnt %s: %v\n", m.Id, r.Err())
+		log.Fatalf("Error while recording measurement %s: %v\n", m.Id, r.Err())
 	}
 }
 
