@@ -133,7 +133,7 @@ func postMeasurementsHandler(res http.ResponseWriter, req *auth.AuthenticatedReq
 		trimMeasurements(m.Check.ID, config.Retention)
 	}
 
-	log.Printf("fn=post_measurements count=%d\n", len(measurements))
+	log.Printf("fn=postMeasurements count=%d\n", len(measurements))
 }
 
 func connectToRedis(config Config) {
