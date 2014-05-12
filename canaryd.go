@@ -118,7 +118,7 @@ func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 }
 
-func postMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
+func postMeasurementsHandler(res http.ResponseWriter, req *auth.AuthenticatedRequest) {
 	decoder := json.NewDecoder(req.Body)
 	measurements := make([]Measurement, 0, 100)
 
@@ -174,9 +174,10 @@ func main() {
 	connectToRedis(config)
 
 	r := mux.NewRouter()
+	authenticator := auth.NewBasicAuthenticator(config.HttpBasicRealm, authenticator)
 
 	r.HandleFunc("/checks/{check_id}/measurements", getMeasurementsHandler).Methods("GET")
-	r.HandleFunc("/measurements", postMeasurementsHandler).Methods("POST")
+	r.HandleFunc("/measurements", authenticator.Wrap(postMeasurementsHandler))
 	http.Handle("/", r)
 
 	log.Printf("fn=main listening=true port=%s\n", config.Port)
