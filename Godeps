@@ -1,10 +1,22 @@
 {
-	"ImportPath": "github.com/gorsuch/canaryd",
+	"ImportPath": "github.com/canaryio/canaryd",
 	"GoVersion": "go1.2.1",
 	"Deps": [
 		{
+			"ImportPath": "github.com/abbot/go-http-auth",
+			"Rev": "0c7409b87f66b1b5037bbf9f866aa9d8f7fd135c"
+		},
+		{
 			"ImportPath": "github.com/golang/glog",
 			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "1be7a086a5fd6440ef16fe96baeda0c78282b980"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "270c42505a11c779b5a5aaecfa5ec717adac996e"
 		},
 		{
 			"ImportPath": "github.com/vmihailenco/bufio",
