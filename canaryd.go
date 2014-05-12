@@ -152,6 +152,9 @@ func init() {
 	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
 	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
+	flag.StringVar(&config.HttpBasicRealm, "http_basic_realm", "canaryd", "HTTP basic authentication realm")
+	flag.StringVar(&config.HttpBasicUsername, "http_basic_username", "", "HTTP basic authentication username")
+	flag.StringVar(&config.HttpBasicPassword, "http_basic_password", "", "HTTP basic authentication password")
 }
 
 func main() {
