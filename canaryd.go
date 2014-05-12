@@ -160,6 +160,10 @@ func init() {
 func main() {
 	flag.Parse()
 
+	if len(config.HttpBasicUsername) == 0 && len(config.HttpBasicPassword) == 0 {
+		log.Println("warning - HTTP basic auth not set correctly; you can't post measurements")
+	}
+
 	connectToRedis(config)
 
 	r := mux.NewRouter()
