@@ -148,6 +148,13 @@ func connectToRedis(config Config) {
 	})
 }
 
+func authenticator(user, realm string) string {
+	if user == config.HttpBasicUsername {
+		return config.HttpBasicPassword
+	}
+	return ""
+}
+
 func init() {
 	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
