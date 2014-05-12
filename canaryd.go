@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 	"github.com/vmihailenco/redis/v2"
 )
