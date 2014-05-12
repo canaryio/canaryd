@@ -114,6 +114,7 @@ func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(nil)
 	}
+	log.Printf("fn=getMeasurements ip=%s range=%d\n", req.RemoteAddr, r)
 	res.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 }
