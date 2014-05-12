@@ -114,6 +114,7 @@ func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(nil)
 	}
+	log.Printf("fn=getMeasurements ip=%s range=%d\n", req.RemoteAddr, r)
 	res.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 }
@@ -132,7 +133,7 @@ func postMeasurementsHandler(res http.ResponseWriter, req *auth.AuthenticatedReq
 		trimMeasurements(m.Check.ID, config.Retention)
 	}
 
-	log.Printf("fn=post_measurements count=%d\n", len(measurements))
+	log.Printf("fn=postMeasurements count=%d\n", len(measurements))
 }
 
 func connectToRedis(config Config) {
