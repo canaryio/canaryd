@@ -18,9 +18,12 @@ var config Config
 var client *redis.Client
 
 type Config struct {
-	Port      string
-	RedisURL  string
-	Retention int64
+	Port              string
+	RedisURL          string
+	Retention         int64
+	HttpBasicRealm    string
+	HttpBasicUsername string
+	HttpBasicPassword string
 }
 
 type Check struct {
