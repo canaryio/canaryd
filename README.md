@@ -33,6 +33,15 @@ canaryd
 
 Measurements are stored within a Redis database, with a sorted set being allocated for each check id.
 
+### Build
+
+```sh
+$ go get github.com/canaryio/canaryd
+$ cd $GOPATH/src/github.com/canaryio/canaryd
+$ godep get
+$ godep go build
+```
+
 ### Configuration
 
 `canaryd` is configured via flags.
