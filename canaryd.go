@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -167,7 +168,7 @@ func ingest(url string, toRecorder chan Measurement) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		log.Fatalf("fn=ingestor url=%s connect=failed status_code=%d", url, res.StatusCode)
+		return errors.New(fmt.Sprintf("fn=ingestor url=%s connect=failed status_code=%d", url, res.StatusCode))
 	}
 
 	log.Printf("fn=ingestor url=%s connect=success\n", url)
