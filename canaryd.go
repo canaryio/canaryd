@@ -159,10 +159,10 @@ func httpServer(config Config) {
 	}
 }
 
-func ingestor(url string, toRecorder chan Measurement) {
+func ingest(url string, toRecorder chan Measurement) error {
 	res, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer res.Body.Close()
 
@@ -179,9 +179,16 @@ func ingestor(url string, toRecorder chan Measurement) {
 		var m Measurement
 		err = dec.Decode(&m)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		toRecorder <- m
+	}
+}
+
+func ingestor(url string, toRecorder chan Measurement) {
+	for {
+		err := ingest(url, toRecorder)
+		log.Println(err)
 	}
 }
 
