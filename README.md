@@ -1,37 +1,7 @@
 canaryd
 =======
 
-`canaryd` is a simple telemetry service charged with both receiving measurements made against various URLs and serving them up in a fast and unobstrusive manner via a simple HTTP API.
-
-
-### Concepts
-
-`canaryd` is intended to be a simple, unassuming http server.  It accepts a JSON array of measurement data via `POST /measurements` in the format of:
-
-```js
-[
-  {
-    "check": {
-      "id": "947235e3-b9bc-451e-90fb-f5744298df5f",
-      "url": "https://github.com"
-    },
-    "id": "64cd257b-d1e2-4832-4813-c51d6e197a28",
-    "location": "do-ny2",
-    "t": 1398360795,
-    "exit_status": 0,
-    "http_status": 200,
-    "local_ip": "107.170.68.66",
-    "primary_ip": "192.30.252.131",
-    "namelookup_time": 0.02074,
-    "connect_time": 0.027214,
-    "starttransfer_time": 0.061265,
-    "total_time": 0.067903
-  },
-  ...
-]
-```
-
-Measurements are stored within a Redis database, with a sorted set being allocated for each check id.
+`canaryd` is an aggregator for measurements taken by [`sensord`](https://github.com/canaryio/sensord).  It connects to each sensor and streams measurements into a Redis instance.  Those measurements are then made available via a simple HTTP API.
 
 ### Build
 
@@ -51,4 +21,22 @@ $ ./canaryd -h
 Usage of ./canaryd:
   -port="5000": port the HTTP server should bind to
   -redis_url="redis://localhost:6379": redis url
+```
+
+### Usage Example
+
+```sh
+# connect to a single local sensor
+$ godep go run canaryd.go --sensord_url http://admin:admin@localhost:5001/measurements
+
+2014/05/14 21:15:42 fn=main listening=true port=5000
+2014/05/14 21:15:42 fn=ingestor url=http://admin:admin@localhost:5001/measurements connect=success
+2014/05/14 21:15:42 fn=recorder check_id=http-nbviewer.ipython.org measurement_id=c256ddaf-bbc5-402f-79fb-641c60f512a0
+2014/05/14 21:15:43 fn=recorder check_id=https-www.hostedgraphite.com measurement_id=c72f8c4a-66e6-4c59-6f9e-497953d7dd6c
+2014/05/14 21:15:43 fn=recorder check_id=http-www.indeed.com measurement_id=be8619db-f72c-4bd7-46f5-2c56782f5a13
+2014/05/14 21:15:43 fn=recorder check_id=http-github.com measurement_id=816d14d6-8191-4fed-5c6b-8837588adedb
+2014/05/14 21:15:43 fn=recorder check_id=https-github.com measurement_id=dc45a49f-63c8-476a-7ae2-131757676485
+2014/05/14 21:15:43 fn=recorder check_id=http-git.io measurement_id=60c67299-3cb0-42c2-430a-b17cc83a0e2b
+2014/05/14 21:15:43 fn=recorder check_id=https-gist.github.com measurement_id=fc2c0b31-f63a-4e31-477c-ebfd5647a91a
+^C
 ```
