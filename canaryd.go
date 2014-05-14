@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
-	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 	"github.com/vmihailenco/redis/v2"
 )
@@ -17,13 +20,24 @@ import (
 var config Config
 var client *redis.Client
 
+type stringslice []string
+
+func (s *stringslice) String() string {
+	return fmt.Sprint(*s)
+}
+
+func (s *stringslice) Set(value string) error {
+	for _, ss := range strings.Split(value, ",") {
+		*s = append(*s, ss)
+	}
+	return nil
+}
+
 type Config struct {
-	Port              string
-	RedisURL          string
-	Retention         int64
-	HttpBasicRealm    string
-	HttpBasicUsername string
-	HttpBasicPassword string
+	SensordURLs stringslice
+	Port        string
+	RedisURL    string
+	Retention   int64
 }
 
 type Check struct {
@@ -119,23 +133,6 @@ func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 }
 
-func postMeasurementsHandler(res http.ResponseWriter, req *auth.AuthenticatedRequest) {
-	decoder := json.NewDecoder(req.Body)
-	measurements := make([]Measurement, 0, 100)
-
-	err := decoder.Decode(&measurements)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, m := range measurements {
-		m.record()
-		trimMeasurements(m.Check.ID, config.Retention)
-	}
-
-	log.Printf("fn=postMeasurements count=%d\n", len(measurements))
-}
-
 func connectToRedis(config Config) {
 	u, err := url.Parse(config.RedisURL)
 	if err != nil {
@@ -149,36 +146,10 @@ func connectToRedis(config Config) {
 	})
 }
 
-func authenticator(user, realm string) string {
-	if user == config.HttpBasicUsername {
-		return config.HttpBasicPassword
-	}
-	return ""
-}
-
-func init() {
-	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
-	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
-	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
-	flag.StringVar(&config.HttpBasicRealm, "http_basic_realm", "canaryd", "HTTP basic authentication realm")
-	flag.StringVar(&config.HttpBasicUsername, "http_basic_username", "", "HTTP basic authentication username")
-	flag.StringVar(&config.HttpBasicPassword, "http_basic_password", "", "HTTP basic authentication password")
-}
-
-func main() {
-	flag.Parse()
-
-	if len(config.HttpBasicUsername) == 0 && len(config.HttpBasicPassword) == 0 {
-		log.Println("warning - HTTP basic auth not set correctly; you can't post measurements")
-	}
-
-	connectToRedis(config)
-
+func httpServer(config Config) {
 	r := mux.NewRouter()
-	authenticator := auth.NewBasicAuthenticator(config.HttpBasicRealm, authenticator)
 
 	r.HandleFunc("/checks/{check_id}/measurements", getMeasurementsHandler).Methods("GET")
-	r.HandleFunc("/measurements", authenticator.Wrap(postMeasurementsHandler))
 	http.Handle("/", r)
 
 	log.Printf("fn=main listening=true port=%s\n", config.Port)
@@ -187,4 +158,70 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func ingest(url string, toRecorder chan Measurement) error {
+	res, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		return errors.New(fmt.Sprintf("fn=ingestor url=%s connect=failed status_code=%d", url, res.StatusCode))
+	}
+
+	log.Printf("fn=ingestor url=%s connect=success\n", url)
+
+	rd := bufio.NewReader(res.Body)
+	dec := json.NewDecoder(rd)
+
+	for {
+		var m Measurement
+		err = dec.Decode(&m)
+		if err != nil {
+			return err
+		}
+		toRecorder <- m
+	}
+}
+
+func ingestor(url string, toRecorder chan Measurement) {
+	for {
+		err := ingest(url, toRecorder)
+		log.Println(err)
+		time.Sleep(1000 * time.Millisecond)
+	}
+}
+
+func recorder(config Config, toRecorder chan Measurement) {
+	for {
+		m := <-toRecorder
+		m.record()
+		trimMeasurements(m.Check.ID, config.Retention)
+		log.Printf("fn=recorder check_id=%s measurement_id=%s\n", m.Check.ID, m.ID)
+	}
+}
+
+func init() {
+	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
+	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
+	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
+	flag.Var(&config.SensordURLs, "sensord_url", "List of sensors")
+}
+
+func main() {
+	flag.Parse()
+	toRecorder := make(chan Measurement)
+
+	connectToRedis(config)
+
+	go httpServer(config)
+	go recorder(config, toRecorder)
+
+	for _, url := range config.SensordURLs {
+		go ingestor(url, toRecorder)
+	}
+
+	select {}
 }

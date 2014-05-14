@@ -3,10 +3,6 @@
 	"GoVersion": "go1.2.1",
 	"Deps": [
 		{
-			"ImportPath": "github.com/abbot/go-http-auth",
-			"Rev": "0c7409b87f66b1b5037bbf9f866aa9d8f7fd135c"
-		},
-		{
 			"ImportPath": "github.com/golang/glog",
 			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
 		},
