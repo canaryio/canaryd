@@ -21,6 +21,7 @@ $ ./canaryd -h
 Usage of ./canaryd:
   -port="5000": port the HTTP server should bind to
   -redis_url="redis://localhost:6379": redis url
+  -sensord_url=[]: List of sensors
 ```
 
 ### Usage Example
