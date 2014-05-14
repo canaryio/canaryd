@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"log"
@@ -9,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 	"github.com/vmihailenco/redis/v2"
 )
@@ -116,23 +116,6 @@ func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 }
 
-func postMeasurementsHandler(res http.ResponseWriter, req *auth.AuthenticatedRequest) {
-	decoder := json.NewDecoder(req.Body)
-	measurements := make([]Measurement, 0, 100)
-
-	err := decoder.Decode(&measurements)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, m := range measurements {
-		m.record()
-		trimMeasurements(m.Check.ID, config.Retention)
-	}
-
-	log.Printf("fn=postMeasurements count=%d\n", len(measurements))
-}
-
 func connectToRedis(config Config) {
 	u, err := url.Parse(config.RedisURL)
 	if err != nil {
@@ -160,6 +143,41 @@ func httpServer(config Config) {
 	}
 }
 
+func ingestor(url string, toRecorder chan Measurement) {
+	res, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		log.Fatalf("fn=ingestor url=%s connect=failed status_code=%d", url, res.StatusCode)
+	}
+
+	log.Printf("fn=ingestor url=%s connect=success\n", url)
+
+	rd := bufio.NewReader(res.Body)
+	dec := json.NewDecoder(rd)
+
+	for {
+		var m Measurement
+		err = dec.Decode(&m)
+		if err != nil {
+			log.Fatal(err)
+		}
+		toRecorder <- m
+	}
+}
+
+func recorder(config Config, toRecorder chan Measurement) {
+	for {
+		m := <-toRecorder
+		m.record()
+		trimMeasurements(m.Check.ID, config.Retention)
+		log.Printf("fn=recorder check_id=%s measurement_id=%s\n", m.Check.ID, m.ID)
+	}
+}
+
 func init() {
 	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
@@ -168,9 +186,13 @@ func init() {
 
 func main() {
 	flag.Parse()
+	toRecorder := make(chan Measurement)
 
 	connectToRedis(config)
+
 	go httpServer(config)
+	go ingestor("http://user:pass@localhost:5001/measurements", toRecorder)
+	go recorder(config, toRecorder)
 
 	select {}
 }
