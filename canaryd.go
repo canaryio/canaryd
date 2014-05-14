@@ -146,11 +146,18 @@ func connectToRedis(config Config) {
 	})
 }
 
-func authenticator(user, realm string) string {
-	if user == config.HttpBasicUsername {
-		return config.HttpBasicPassword
+func httpServer(config Config) {
+	r := mux.NewRouter()
+
+	r.HandleFunc("/checks/{check_id}/measurements", getMeasurementsHandler).Methods("GET")
+	http.Handle("/", r)
+
+	log.Printf("fn=main listening=true port=%s\n", config.Port)
+
+	err := http.ListenAndServe(":"+config.Port, nil)
+	if err != nil {
+		panic(err)
 	}
-	return ""
 }
 
 func init() {
@@ -163,16 +170,7 @@ func main() {
 	flag.Parse()
 
 	connectToRedis(config)
+	go httpServer(config)
 
-	r := mux.NewRouter()
-
-	r.HandleFunc("/checks/{check_id}/measurements", getMeasurementsHandler).Methods("GET")
-	http.Handle("/", r)
-
-	log.Printf("fn=main listening=true port=%s\n", config.Port)
-
-	err := http.ListenAndServe(":"+config.Port, nil)
-	if err != nil {
-		panic(err)
-	}
+	select {}
 }
