@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -17,10 +19,24 @@ import (
 var config Config
 var client *redis.Client
 
+type stringslice []string
+
+func (s *stringslice) String() string {
+	return fmt.Sprint(*s)
+}
+
+func (s *stringslice) Set(value string) error {
+	for _, ss := range strings.Split(value, ",") {
+		*s = append(*s, ss)
+	}
+	return nil
+}
+
 type Config struct {
-	Port      string
-	RedisURL  string
-	Retention int64
+	SensordURLs stringslice
+	Port        string
+	RedisURL    string
+	Retention   int64
 }
 
 type Check struct {
@@ -182,6 +198,7 @@ func init() {
 	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
 	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
+	flag.Var(&config.SensordURLs, "sensord_url", "List of sensors")
 }
 
 func main() {
@@ -191,8 +208,11 @@ func main() {
 	connectToRedis(config)
 
 	go httpServer(config)
-	go ingestor("http://user:pass@localhost:5001/measurements", toRecorder)
 	go recorder(config, toRecorder)
+
+	for _, url := range config.SensordURLs {
+		go ingestor(url, toRecorder)
+	}
 
 	select {}
 }
