@@ -189,6 +189,7 @@ func ingestor(url string, toRecorder chan Measurement) {
 	for {
 		err := ingest(url, toRecorder)
 		log.Println(err)
+		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
