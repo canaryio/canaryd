@@ -18,12 +18,9 @@ var config Config
 var client *redis.Client
 
 type Config struct {
-	Port              string
-	RedisURL          string
-	Retention         int64
-	HttpBasicRealm    string
-	HttpBasicUsername string
-	HttpBasicPassword string
+	Port      string
+	RedisURL  string
+	Retention int64
 }
 
 type Check struct {
@@ -160,25 +157,16 @@ func init() {
 	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
 	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
-	flag.StringVar(&config.HttpBasicRealm, "http_basic_realm", "canaryd", "HTTP basic authentication realm")
-	flag.StringVar(&config.HttpBasicUsername, "http_basic_username", "", "HTTP basic authentication username")
-	flag.StringVar(&config.HttpBasicPassword, "http_basic_password", "", "HTTP basic authentication password")
 }
 
 func main() {
 	flag.Parse()
 
-	if len(config.HttpBasicUsername) == 0 && len(config.HttpBasicPassword) == 0 {
-		log.Println("warning - HTTP basic auth not set correctly; you can't post measurements")
-	}
-
 	connectToRedis(config)
 
 	r := mux.NewRouter()
-	authenticator := auth.NewBasicAuthenticator(config.HttpBasicRealm, authenticator)
 
 	r.HandleFunc("/checks/{check_id}/measurements", getMeasurementsHandler).Methods("GET")
-	r.HandleFunc("/measurements", authenticator.Wrap(postMeasurementsHandler))
 	http.Handle("/", r)
 
 	log.Printf("fn=main listening=true port=%s\n", config.Port)
