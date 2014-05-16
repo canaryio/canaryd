@@ -242,8 +242,6 @@ func main() {
 		)
 	}
 
-	go metrics.Log(metrics.DefaultRegistry, 10e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
-
 	connectToRedis(config)
 
 	go httpServer(config)
