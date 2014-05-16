@@ -9,11 +9,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/rcrowley/go-metrics"
 	"github.com/vmihailenco/redis/v2"
 )
 
@@ -195,11 +197,16 @@ func ingestor(url string, toRecorder chan Measurement) {
 }
 
 func recorder(config Config, toRecorder chan Measurement) {
+	recordTimer := metrics.NewTimer()
+	metrics.Register("record", recordTimer)
+
+	trimTimer := metrics.NewTimer()
+	metrics.Register("trim", trimTimer)
+
 	for {
 		m := <-toRecorder
-		m.record()
-		trimMeasurements(m.Check.ID, config.Retention)
-		log.Printf("fn=recorder check_id=%s measurement_id=%s\n", m.Check.ID, m.ID)
+		recordTimer.Time(func() { m.record() })
+		trimTimer.Time(func() { trimMeasurements(m.Check.ID, config.Retention) })
 	}
 }
 
@@ -213,6 +220,8 @@ func init() {
 func main() {
 	flag.Parse()
 	toRecorder := make(chan Measurement)
+
+	go metrics.Log(metrics.DefaultRegistry, 10e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
 	connectToRedis(config)
 
