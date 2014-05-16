@@ -16,6 +16,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics/librato"
 	"github.com/vmihailenco/redis/v2"
 )
 
@@ -36,10 +37,13 @@ func (s *stringslice) Set(value string) error {
 }
 
 type Config struct {
-	SensordURLs stringslice
-	Port        string
-	RedisURL    string
-	Retention   int64
+	SensordURLs   stringslice
+	Port          string
+	RedisURL      string
+	Retention     int64
+	LibratoEmail  string
+	LibratoToken  string
+	LibratoSource string
 }
 
 type Check struct {
@@ -215,11 +219,28 @@ func init() {
 	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
 	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
 	flag.Var(&config.SensordURLs, "sensord_url", "List of sensors")
+
+	config.LibratoEmail = os.Getenv("LIBRATO_EMAIL")
+	config.LibratoToken = os.Getenv("LIBRATO_TOKEN")
+	config.LibratoSource = os.Getenv("LIBRATO_SOURCE")
 }
 
 func main() {
 	flag.Parse()
+
 	toRecorder := make(chan Measurement)
+
+	if config.LibratoEmail != "" && config.LibratoToken != "" && config.LibratoSource != "" {
+		log.Println("fn=main metircs=librato")
+		go librato.Librato(metrics.DefaultRegistry,
+			10e9,                  // interval
+			config.LibratoEmail,   // account owner email address
+			config.LibratoToken,   // Librato API token
+			config.LibratoSource,  // source
+			[]float64{50, 95, 99}, // precentiles to send
+			time.Millisecond,      // time unit
+		)
+	}
 
 	go metrics.Log(metrics.DefaultRegistry, 10e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
