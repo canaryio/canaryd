@@ -198,10 +198,10 @@ func ingestor(url string, toRecorder chan Measurement) {
 
 func recorder(config Config, toRecorder chan Measurement) {
 	recordTimer := metrics.NewTimer()
-	metrics.Register("record", recordTimer)
+	metrics.Register("canaryd.record", recordTimer)
 
 	trimTimer := metrics.NewTimer()
-	metrics.Register("trim", trimTimer)
+	metrics.Register("canaryd.trim", trimTimer)
 
 	for {
 		m := <-toRecorder
