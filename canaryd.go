@@ -125,20 +125,6 @@ func getFormValueWithDefault(req *http.Request, key string, def string) string {
 	return def
 }
 
-func getMeasurementsHandler(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	checkID := vars["check_id"]
-	rS := getFormValueWithDefault(req, "range", "10")
-
-	r, err := strconv.ParseInt(rS, 10, 64)
-	if err != nil {
-		panic(nil)
-	}
-	log.Printf("fn=getMeasurements ip=%s range=%d\n", req.RemoteAddr, r)
-	res.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
-}
-
 func connectToRedis(config Config) {
 	u, err := url.Parse(config.RedisURL)
 	if err != nil {
@@ -153,9 +139,27 @@ func connectToRedis(config Config) {
 }
 
 func httpServer(config Config) {
-	r := mux.NewRouter()
+	t := metrics.NewTimer()
+	metrics.Register("canaryd.get_measurements", t)
 
-	r.HandleFunc("/checks/{check_id}/measurements", getMeasurementsHandler).Methods("GET")
+	h := func(res http.ResponseWriter, req *http.Request) {
+		t.Time(func() {
+			vars := mux.Vars(req)
+			checkID := vars["check_id"]
+			rS := getFormValueWithDefault(req, "range", "10")
+
+			r, err := strconv.ParseInt(rS, 10, 64)
+			if err != nil {
+				panic(nil)
+			}
+			log.Printf("fn=getMeasurements ip=%s range=%d\n", req.RemoteAddr, r)
+			res.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
+		})
+	}
+
+	r := mux.NewRouter()
+	r.HandleFunc("/checks/{check_id}/measurements", h).Methods("GET")
 	http.Handle("/", r)
 
 	log.Printf("fn=main listening=true port=%s\n", config.Port)
