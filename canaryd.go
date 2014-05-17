@@ -139,22 +139,23 @@ func connectToRedis(config Config) {
 }
 
 func httpServer(config Config) {
-	c := metrics.NewCounter()
-	metrics.Register("canaryd.get_measurements", c)
+	t := metrics.NewTimer()
+	metrics.Register("canaryd.get_measurements", t)
 
 	h := func(res http.ResponseWriter, req *http.Request) {
-		c.Inc(1)
-		vars := mux.Vars(req)
-		checkID := vars["check_id"]
-		rS := getFormValueWithDefault(req, "range", "10")
+		t.Time(func() {
+			vars := mux.Vars(req)
+			checkID := vars["check_id"]
+			rS := getFormValueWithDefault(req, "range", "10")
 
-		r, err := strconv.ParseInt(rS, 10, 64)
-		if err != nil {
-			panic(nil)
-		}
-		log.Printf("fn=getMeasurements ip=%s range=%d\n", req.RemoteAddr, r)
-		res.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
+			r, err := strconv.ParseInt(rS, 10, 64)
+			if err != nil {
+				panic(nil)
+			}
+			log.Printf("fn=getMeasurements ip=%s range=%d\n", req.RemoteAddr, r)
+			res.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
+		})
 	}
 
 	r := mux.NewRouter()
