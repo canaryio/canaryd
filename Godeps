@@ -23,6 +23,10 @@
 			"Rev": "24e7e48f60fc2d9e99e43c07485d9fff42051e66"
 		},
 		{
+			"ImportPath": "github.com/vmihailenco/msgpack",
+			"Rev": "20c1b88a6c7fc5432037439f4e8c582e236fb205"
+		},
+		{
 			"ImportPath": "github.com/vmihailenco/redis/v2",
 			"Rev": "f76984bbcf9cc19b0dbba74d85937307ea8509a5"
 		}

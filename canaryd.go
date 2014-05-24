@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/librato"
+	"github.com/vmihailenco/msgpack"
 	"github.com/vmihailenco/redis/v2"
 )
 
@@ -164,7 +164,7 @@ func httpServer(config Config) {
 	r.HandleFunc("/checks/{check_id}/measurements", h).Methods("GET")
 	http.Handle("/", r)
 
-	log.Printf("fn=main listening=true port=%s\n", config.Port)
+	log.Printf("fn=httpServer listening=true port=%s\n", config.Port)
 
 	err := http.ListenAndServe(":"+config.Port, nil)
 	if err != nil {
@@ -172,37 +172,34 @@ func httpServer(config Config) {
 	}
 }
 
-func ingest(url string, toRecorder chan Measurement) error {
-	res, err := http.Get(url)
+func udpServer(port string, toRecorder chan Measurement) {
+	udpAddr, err := net.ResolveUDPAddr("udp4", "0.0.0.0:"+port)
 	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("fn=ingestor url=%s connect=failed status_code=%d", url, res.StatusCode))
+		log.Fatal(err)
 	}
 
-	log.Printf("fn=ingestor url=%s connect=success\n", url)
+	conn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	rd := bufio.NewReader(res.Body)
-	dec := json.NewDecoder(rd)
+	log.Printf("fn=udpServer listening=true port=%s\n", config.Port)
 
 	for {
-		var m Measurement
-		err = dec.Decode(&m)
+		var buf [512]byte
+		n, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
-		toRecorder <- m
-	}
-}
 
-func ingestor(url string, toRecorder chan Measurement) {
-	for {
-		err := ingest(url, toRecorder)
-		log.Println(err)
-		time.Sleep(1000 * time.Millisecond)
+		payload := buf[0:n]
+		var m Measurement
+		err = msgpack.Unmarshal(payload, &m)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		toRecorder <- m
 	}
 }
 
@@ -251,11 +248,8 @@ func main() {
 	connectToRedis(config)
 
 	go httpServer(config)
+	go udpServer(config.Port, toRecorder)
 	go recorder(config, toRecorder)
-
-	for _, url := range config.SensordURLs {
-		go ingestor(url, toRecorder)
-	}
 
 	select {}
 }
