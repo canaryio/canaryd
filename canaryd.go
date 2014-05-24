@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -217,11 +216,24 @@ func recorder(config Config, toRecorder chan Measurement) {
 	}
 }
 
+func getEnvWithDefault(name, def string) string {
+	val := os.Getenv(name)
+	if val != "" {
+		return val
+	}
+
+	return def
+}
+
 func init() {
-	flag.StringVar(&config.Port, "port", "5000", "port the HTTP server should bind to")
-	flag.StringVar(&config.RedisURL, "redis_url", "redis://localhost:6379", "redis url")
-	flag.Int64Var(&config.Retention, "retention", 60, "second of each measurement to keep")
-	flag.Var(&config.SensordURLs, "sensord_url", "List of sensors")
+	config.Port = getEnvWithDefault("PORT", "5000")
+	config.RedisURL = getEnvWithDefault("REDIS_URL", "redis://localhost:6379")
+
+	retention, err := strconv.ParseInt(getEnvWithDefault("RETENTION", "60"), 10, 64)
+	if err != nil {
+		log.Fatal(err)
+	}
+	config.Retention = retention
 
 	config.LibratoEmail = os.Getenv("LIBRATO_EMAIL")
 	config.LibratoToken = os.Getenv("LIBRATO_TOKEN")
@@ -229,8 +241,6 @@ func init() {
 }
 
 func main() {
-	flag.Parse()
-
 	toRecorder := make(chan Measurement)
 
 	if config.LibratoEmail != "" && config.LibratoToken != "" && config.LibratoSource != "" {
