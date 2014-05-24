@@ -153,6 +153,8 @@ func httpServer(config Config) {
 				panic(nil)
 			}
 			log.Printf("fn=getMeasurements ip=%s range=%d\n", req.RemoteAddr, r)
+			res.Header().Set("Access-Control-Allow-Origin", "*")
+			res.Header().Set("Access-Control-Allow-Methods", "GET")
 			res.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(res).Encode(getMeasurementsByRange(checkID, r))
 		})
