@@ -14,22 +14,15 @@ $ godep go build
 
 ### Configuration
 
-`canaryd` is configured via flags.
+`canaryd` is configured via the environment. The following values are allowed:
 
-```sh
-$ ./canaryd -h
-Usage of ./canaryd:
-  -port="5000": port the HTTP and UDP servers should bind to
-  -redis_url="redis://localhost:6379": redis url
-```
+* `PORT` - port the HTTP and UDP servers should bind to, defaulting to '5000'
+* `REDIS_URL` - URL for the redis backend, defaults to redis://localhost:6379
 
 `canaryd` allows metrics to be recorded to Librato.  You can configure with the following environment variables:
 
-```
-export LIBRATO_EMAIL=me@mydomain.com
-export LIBRATO_TOKEN=asdf
-export LIBRATO_SOURCE=my_hostname
-```
+* `LIBRATO_EMAIL` - email address of your librato account
+* `LIBRATO_TOKEN` - token for your Librato account
 
 ### Usage Example
 
