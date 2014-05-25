@@ -237,7 +237,15 @@ func init() {
 
 	config.LibratoEmail = os.Getenv("LIBRATO_EMAIL")
 	config.LibratoToken = os.Getenv("LIBRATO_TOKEN")
-	config.LibratoSource = os.Getenv("LIBRATO_SOURCE")
+	if os.Getenv("LIBRATO_SOURCE") != "" {
+		config.LibratoSource = os.Getenv("LIBRATO_SOURCE")
+	} else {
+		hostname, err := os.Hostname()
+		if err != nil {
+			log.Fatal(err)
+		}
+		config.LibratoSource = hostname
+	}
 }
 
 func main() {
