@@ -19,6 +19,10 @@
 			"Rev": "6ffbdf30ba7072d9f9e2afe57ad651a75a544a83"
 		},
 		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "410219ae829b24af99a4d48a79858f23d0be42ee"
+		},
+		{
 			"ImportPath": "github.com/vmihailenco/bufio",
 			"Rev": "24e7e48f60fc2d9e99e43c07485d9fff42051e66"
 		},
