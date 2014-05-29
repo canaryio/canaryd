@@ -137,6 +137,10 @@ func connectToRedis(config Config) {
 	})
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "OK\n")
+}
+
 func httpServer(config Config) {
 	timer := metrics.NewTimer()
 	metrics.Register("canaryd.get_measurements", timer)
@@ -160,6 +164,7 @@ func httpServer(config Config) {
 	}
 
 	router := mux.NewRouter()
+	router.HandleFunc("/health", healthHandler).Methods("GET")
 	router.HandleFunc("/checks/{check_id}/measurements", measurementsReqHandler).Methods("GET")
 	http.Handle("/", router)
 
