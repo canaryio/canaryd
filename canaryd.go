@@ -43,6 +43,7 @@ type Config struct {
 	LibratoEmail  string
 	LibratoToken  string
 	LibratoSource string
+	LogStderr     bool
 }
 
 type Check struct {
@@ -251,13 +252,17 @@ func init() {
 		}
 		config.LibratoSource = hostname
 	}
+	
+	if os.Getenv("LOGSTDERR") == "1" {
+		config.LogStderr = true
+	}
 }
 
 func main() {
 	toRecorder := make(chan Measurement)
 
 	if config.LibratoEmail != "" && config.LibratoToken != "" && config.LibratoSource != "" {
-		log.Println("fn=main metircs=librato")
+		log.Println("fn=main metrics=librato")
 		go librato.Librato(metrics.DefaultRegistry,
 			10e9,                  // interval
 			config.LibratoEmail,   // account owner email address
@@ -266,6 +271,10 @@ func main() {
 			[]float64{50, 95, 99}, // precentiles to send
 			time.Millisecond,      // time unit
 		)
+	}
+
+	if config.LogStderr == true {
+		go metrics.Log(metrics.DefaultRegistry, 10e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 	}
 
 	connectToRedis(config)
