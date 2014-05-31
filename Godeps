@@ -15,6 +15,10 @@
 			"Rev": "270c42505a11c779b5a5aaecfa5ec717adac996e"
 		},
 		{
+			"ImportPath": "github.com/influxdb/influxdb-go",
+			"Rev": "63c9a5f67dcb633d05164bf8442160c9e2e402f7"
+		},
+		{
 			"ImportPath": "github.com/rcrowley/go-metrics",
 			"Rev": "6ffbdf30ba7072d9f9e2afe57ad651a75a544a83"
 		},

@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/librato"
+	"github.com/rcrowley/go-metrics/influxdb"
 	"github.com/vmihailenco/msgpack"
 	"github.com/vmihailenco/redis/v2"
 )
@@ -36,14 +37,18 @@ func (s *stringslice) Set(value string) error {
 }
 
 type Config struct {
-	SensordURLs   stringslice
-	Port          string
-	RedisURL      string
-	Retention     int64
-	LibratoEmail  string
-	LibratoToken  string
-	LibratoSource string
-	LogStderr     bool
+	SensordURLs      stringslice
+	Port             string
+	RedisURL         string
+	Retention        int64
+	LibratoEmail     string
+	LibratoToken     string
+	LibratoSource    string
+	LogStderr        bool
+	InfluxdbHost     string
+	InfluxdbDatabase string
+	InfluxdbUser     string
+	InfluxdbPassword string
 }
 
 type Check struct {
@@ -256,6 +261,11 @@ func init() {
 	if os.Getenv("LOGSTDERR") == "1" {
 		config.LogStderr = true
 	}
+
+	config.InfluxdbHost     = os.Getenv("INFLUXDB_HOST")
+	config.InfluxdbDatabase = os.Getenv("INFLUXDB_DATABASE")
+	config.InfluxdbUser     = os.Getenv("INFLUXDB_USER")
+	config.InfluxdbPassword = os.Getenv("INFLUXDB_PASSWORD")
 }
 
 func main() {
@@ -277,6 +287,20 @@ func main() {
 		go metrics.Log(metrics.DefaultRegistry, 10e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 	}
 
+	if config.InfluxdbHost != "" &&
+	   config.InfluxdbDatabase != "" &&
+	   config.InfluxdbUser != "" &&
+	   config.InfluxdbPassword != "" {
+		log.Println("fn=main metrics=influxdb")
+
+		go influxdb.Influxdb(metrics.DefaultRegistry, 10e9, &influxdb.Config{
+			Host:     config.InfluxdbHost,
+			Database: config.InfluxdbDatabase,
+			Username: config.InfluxdbUser,
+			Password: config.InfluxdbPassword,
+		})
+	}
+	
 	connectToRedis(config)
 
 	go httpServer(config)
