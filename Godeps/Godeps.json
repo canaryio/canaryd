@@ -8,11 +8,11 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
-			"Rev": "1be7a086a5fd6440ef16fe96baeda0c78282b980"
+			"Rev": "1f3e8a46c5bb4c29971d9867ede6e198ca5eddce"
 		},
 		{
 			"ImportPath": "github.com/gorilla/mux",
-			"Rev": "270c42505a11c779b5a5aaecfa5ec717adac996e"
+			"Rev": "0ef595e787efa95d68151570ead5c85dc2e05f91"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb-go",
@@ -36,7 +36,7 @@
 		},
 		{
 			"ImportPath": "github.com/vmihailenco/redis/v2",
-			"Rev": "f76984bbcf9cc19b0dbba74d85937307ea8509a5"
+			"Rev": "18da14f838c8108e54c572f4f0cc6f4ea8184311"
 		}
 	]
 }
