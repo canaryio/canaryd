@@ -1,8 +1,10 @@
 package main
 
 import (
+	"container/list"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/librato"
 	"github.com/rcrowley/go-metrics/influxdb"
@@ -22,6 +25,7 @@ import (
 
 var config Config
 var client *redis.Client
+var wsClients = make(map[string]*list.List)
 
 type stringslice []string
 
@@ -70,6 +74,20 @@ type Measurement struct {
 	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
 	TotalTime         float64 `json:"total_time,omitempty"`
 	SizeDownload      float64 `json:"size_download,omitempty"`
+}
+
+type WsWrapper struct {
+	Conn              *websocket.Conn
+	CheckID           string
+	RemoteAddr        string
+}
+
+var wsUpgrader = websocket.Upgrader{
+	ReadBufferSize:  4096,
+	WriteBufferSize: 4096,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func (m *Measurement) record() {
@@ -172,6 +190,7 @@ func httpServer(config Config) {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", healthHandler).Methods("GET")
 	router.HandleFunc("/checks/{check_id}/measurements", measurementsReqHandler).Methods("GET")
+	router.HandleFunc("/ws/checks/{check_id}/measurements", websocketHandler);
 	http.Handle("/", router)
 
 	log.Printf("fn=httpServer listening=true port=%s\n", config.Port)
@@ -182,7 +201,7 @@ func httpServer(config Config) {
 	}
 }
 
-func udpServer(port string, toRecorder chan Measurement) {
+func udpServer(port string, toRecorder chan Measurement, toWebsocket chan Measurement) {
 	udpAddr, err := net.ResolveUDPAddr("udp4", "0.0.0.0:"+port)
 	if err != nil {
 		log.Fatal(err)
@@ -210,6 +229,66 @@ func udpServer(port string, toRecorder chan Measurement) {
 		}
 
 		toRecorder <- m
+		toWebsocket <- m
+	}
+}
+
+func websocketHandler(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	checkID := vars["check_id"]
+
+	conn, err := wsUpgrader.Upgrade(res, req, nil)
+	if err != nil {
+		log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s connectWsClient=false err=%v\n", req.RemoteAddr, checkID, err)
+		return
+	}
+	log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s connectWsClient=true\n", req.RemoteAddr, checkID)
+
+	//add websocket to subscribe list
+	wsWrapper := WsWrapper{
+		Conn: conn,
+		CheckID: checkID,
+		RemoteAddr: req.RemoteAddr,
+	}
+
+	wsList := wsClients[checkID]
+	if wsList == nil {
+		wsList = list.New()
+		wsClients[checkID] = wsList
+	}
+
+	ws := wsList.PushBack(&wsWrapper)
+	defer conn.Close()
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s removeWsClient=true safeDisconnect=false err=%v\n", wsWrapper.RemoteAddr, checkID, err)
+			} else {
+				log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s removeWsClient=true safeDisconnect=true\n", wsWrapper.RemoteAddr, checkID)
+			}
+			//remove websocket from subscribe list
+			wsList.Remove(ws)
+			return
+		}
+	}
+}
+
+func websocketWriter(config Config, toWebsocket chan Measurement) {
+	for m := range toWebsocket {
+		checkID := m.Check.ID
+		wsList := wsClients[checkID]
+		if wsList != nil {
+			for ws := wsList.Front(); ws != nil; ws = ws.Next() {
+				wsWrapper := ws.Value.(*WsWrapper)
+				err := wsWrapper.Conn.WriteJSON(m)
+				if err != nil {
+					//remove websocket from subscribe list
+					log.Printf("fn=websocketWriter remoteAddr=%s checkID=%s removeWsClient=true safeDisconnect=false err=%v\n", wsWrapper.RemoteAddr, checkID, err)
+					wsList.Remove(ws)
+				}
+			}
+		}
 	}
 }
 
@@ -257,7 +336,7 @@ func init() {
 		}
 		config.LibratoSource = hostname
 	}
-	
+
 	if os.Getenv("LOGSTDERR") == "1" {
 		config.LogStderr = true
 	}
@@ -270,6 +349,7 @@ func init() {
 
 func main() {
 	toRecorder := make(chan Measurement)
+	toWebsocket := make(chan Measurement)
 
 	if config.LibratoEmail != "" && config.LibratoToken != "" && config.LibratoSource != "" {
 		log.Println("fn=main metrics=librato")
@@ -300,11 +380,12 @@ func main() {
 			Password: config.InfluxdbPassword,
 		})
 	}
-	
+
 	connectToRedis(config)
 
 	go httpServer(config)
-	go udpServer(config.Port, toRecorder)
+	go udpServer(config.Port, toRecorder, toWebsocket)
+	go websocketWriter(config, toWebsocket)
 	go recorder(config, toRecorder)
 
 	select {}
