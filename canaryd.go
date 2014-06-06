@@ -1,10 +1,8 @@
 package main
 
 import (
-	"container/list"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -25,7 +23,12 @@ import (
 
 var config Config
 var client *redis.Client
-var wsClients = make(map[string]*list.List)
+var wsHub = &WsHub{
+	Broadcast: make(chan *Measurement),
+	Register: make(chan *WsWrapper),
+	UnRegister: make(chan *WsWrapper),
+	Connections: make(map[string]map[*WsWrapper]bool),
+}
 
 type stringslice []string
 
@@ -74,6 +77,13 @@ type Measurement struct {
 	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
 	TotalTime         float64 `json:"total_time,omitempty"`
 	SizeDownload      float64 `json:"size_download,omitempty"`
+}
+
+type WsHub struct {
+	Broadcast         chan *Measurement
+	Register          chan *WsWrapper
+	UnRegister        chan *WsWrapper
+	Connections       map[string]map[*WsWrapper]bool
 }
 
 type WsWrapper struct {
@@ -165,7 +175,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK\n")
 }
 
-func httpServer(config Config) {
+func httpServer(config Config, hub *WsHub) {
 	timer := metrics.NewTimer()
 	metrics.Register("canaryd.get_measurements", timer)
 
@@ -190,7 +200,9 @@ func httpServer(config Config) {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", healthHandler).Methods("GET")
 	router.HandleFunc("/checks/{check_id}/measurements", measurementsReqHandler).Methods("GET")
-	router.HandleFunc("/ws/checks/{check_id}/measurements", websocketHandler);
+	router.HandleFunc("/ws/checks/{check_id}/measurements", func(res http.ResponseWriter, req *http.Request){
+		websocketHandler(hub, res, req)
+	});
 	http.Handle("/", router)
 
 	log.Printf("fn=httpServer listening=true port=%s\n", config.Port)
@@ -233,7 +245,7 @@ func udpServer(port string, toRecorder chan Measurement, toWebsocket chan Measur
 	}
 }
 
-func websocketHandler(res http.ResponseWriter, req *http.Request) {
+func websocketHandler(hub *WsHub, res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	checkID := vars["check_id"]
 
@@ -242,52 +254,54 @@ func websocketHandler(res http.ResponseWriter, req *http.Request) {
 		log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s connectWsClient=false err=%v\n", req.RemoteAddr, checkID, err)
 		return
 	}
-	log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s connectWsClient=true\n", req.RemoteAddr, checkID)
 
-	//add websocket to subscribe list
+	defer conn.Close()
+
 	wsWrapper := WsWrapper{
 		Conn: conn,
 		CheckID: checkID,
 		RemoteAddr: req.RemoteAddr,
 	}
 
-	wsList := wsClients[checkID]
-	if wsList == nil {
-		wsList = list.New()
-		wsClients[checkID] = wsList
-	}
+	hub.Register <- &wsWrapper
 
-	ws := wsList.PushBack(&wsWrapper)
-	defer conn.Close()
 	for {
 		_, _, err := conn.ReadMessage()
 		if err != nil {
-			if err != io.EOF {
-				log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s removeWsClient=true safeDisconnect=false err=%v\n", wsWrapper.RemoteAddr, checkID, err)
-			} else {
-				log.Printf("fn=websocketHandler remoteAddr=%s checkID=%s removeWsClient=true safeDisconnect=true\n", wsWrapper.RemoteAddr, checkID)
-			}
 			//remove websocket from subscribe list
-			wsList.Remove(ws)
-			return
+			hub.UnRegister <- &wsWrapper
+			break
 		}
 	}
 }
 
-func websocketWriter(config Config, toWebsocket chan Measurement) {
+func websocketWriter(config Config, hub *WsHub, toWebsocket chan Measurement) {
 	for m := range toWebsocket {
-		checkID := m.Check.ID
-		wsList := wsClients[checkID]
-		if wsList != nil {
-			for ws := wsList.Front(); ws != nil; ws = ws.Next() {
-				wsWrapper := ws.Value.(*WsWrapper)
-				err := wsWrapper.Conn.WriteJSON(m)
-				if err != nil {
-					//remove websocket from subscribe list
-					log.Printf("fn=websocketWriter remoteAddr=%s checkID=%s removeWsClient=true safeDisconnect=false err=%v\n", wsWrapper.RemoteAddr, checkID, err)
-					wsList.Remove(ws)
+		hub.Broadcast <- &m
+	}
+}
+
+func runWebsocketHub(hub *WsHub) {
+	for {
+		select {
+			case wsWrapper := <-hub.Register:
+				checkMap := hub.Connections[wsWrapper.CheckID]
+				if checkMap == nil {
+					hub.Connections[wsWrapper.CheckID] = make(map[*WsWrapper]bool)
 				}
-			}
+				hub.Connections[wsWrapper.CheckID][wsWrapper] = true
+				log.Printf("fn=runWebsocketHub#Register remoteAddr=%s checkID=%s connectWsClient=true\n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
+			case wsWrapper := <-hub.UnRegister:
+				log.Printf("fn=runWebsocketHub#UnRegister remoteAddr=%s checkID=%s removeWsClient=true \n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
+				delete(hub.Connections[wsWrapper.CheckID], wsWrapper)
+			case m := <-hub.Broadcast:
+				for wsWrapper := range hub.Connections[m.Check.ID] {
+					err := wsWrapper.Conn.WriteJSON(m)
+					if err != nil {
+						delete(hub.Connections[m.Check.ID], wsWrapper)
+						log.Printf("fn=runWebsocketHub#Broadcast remoteAddr=%s checkID=%s removeWsClient=true \n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
+					}
+				}
 		}
 	}
 }
@@ -383,9 +397,10 @@ func main() {
 
 	connectToRedis(config)
 
-	go httpServer(config)
+	go runWebsocketHub(wsHub)
+	go httpServer(config, wsHub)
 	go udpServer(config.Port, toRecorder, toWebsocket)
-	go websocketWriter(config, toWebsocket)
+	go websocketWriter(config, wsHub, toWebsocket)
 	go recorder(config, toRecorder)
 
 	select {}
