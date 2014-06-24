@@ -18,11 +18,25 @@ $ godep go build
 
 * `PORT` - port the HTTP and UDP servers should bind to, defaulting to '5000'
 * `REDIS_URL` - URL for the redis backend, defaults to redis://localhost:6379
+* `REDIS_PUBLISH` - set to `1` to publish measurements via Redis; `PSUBSCRIBE` to `measurements:*` to get measurements for all check IDs
+* `RETENTION` - how long to store measurements, in seconds; defaults to 60
 
-`canaryd` allows metrics to be recorded to Librato.  You can configure with the following environment variables:
+`canaryd` allows internal performance metrics to be captured.  To send them to
+Librato, set the following environment variables:
 
 * `LIBRATO_EMAIL` - email address of your librato account
 * `LIBRATO_TOKEN` - token for your Librato account
+* `LIBRATO_SOURCE` - defaults to the server's hostname
+
+To send them to InfluxDB:
+
+* `INFLUXDB_HOST` - the InfluxDB hostname
+* `INFLUXDB_DATABASE` - database to store the metrics in
+* `INFLUXDB_USER`, `INFLUXDB_PASSWORD` - authentication credentials
+
+You can also dump them to `stderr`:
+
+* `LOGSTDERR` - set to `1` to enable
 
 ### Usage Example
 

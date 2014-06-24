@@ -370,7 +370,9 @@ func init() {
 	config.Port = getEnvWithDefault("PORT", "5000")
 	config.RedisURL = getEnvWithDefault("REDIS_URL", "redis://localhost:6379")
 
-	config.Publish = getEnvWithDefault("REDIS_PUBLISH", "no") != "no"
+	if os.Getenv("REDIS_PUBLISH") == "1" {
+		config.Publish = true
+	}
 
 	retention, err := strconv.ParseInt(getEnvWithDefault("RETENTION", "60"), 10, 64)
 	if err != nil {
