@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/canaryio/canaryd",
-	"GoVersion": "go1.2.1",
+	"GoVersion": "go1.2.2",
 	"Deps": [
 		{
 			"ImportPath": "github.com/golang/glog",
@@ -23,8 +23,16 @@
 			"Rev": "6ffbdf30ba7072d9f9e2afe57ad651a75a544a83"
 		},
 		{
+			"ImportPath": "github.com/stretchr/objx",
+			"Rev": "cbeaeb16a013161a98496fad62933b1d21786672"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Rev": "410219ae829b24af99a4d48a79858f23d0be42ee"
+			"Rev": "5cc789b89e1b0289394556166a1fccd55c93d868"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/mock",
+			"Rev": "5cc789b89e1b0289394556166a1fccd55c93d868"
 		},
 		{
 			"ImportPath": "github.com/vmihailenco/bufio",

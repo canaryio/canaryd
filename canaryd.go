@@ -22,7 +22,7 @@ import (
 )
 
 var config Config
-var client *redis.Client
+var client RedisClient
 var wsHub = &WsHub{
 	Broadcast: make(chan *Measurement),
 	Register: make(chan *WsWrapper),
@@ -56,6 +56,12 @@ type Config struct {
 	InfluxdbDatabase string
 	InfluxdbUser     string
 	InfluxdbPassword string
+}
+
+type RedisClient interface {
+	ZAdd(key string, members ...redis.Z) *redis.IntCmd
+	ZRemRangeByScore(key, min, max string) *redis.IntCmd
+	ZRevRangeByScore(key string, opt redis.ZRangeByScore) *redis.StringSliceCmd
 }
 
 type Check struct {
@@ -100,12 +106,25 @@ var wsUpgrader = websocket.Upgrader{
 	},
 }
 
-func (m *Measurement) record() {
-	s, _ := json.Marshal(m)
-	z := redis.Z{Score: float64(m.T), Member: string(s)}
-	r := client.ZAdd(getRedisKey(m.Check.ID), z)
-	if r.Err() != nil {
-		log.Fatalf("Error while recording measurement %s: %v\n", m.ID, r.Err())
+type Recorder struct {
+	client RedisClient
+}
+
+func NewRecorder(client RedisClient) *Recorder {
+	return &Recorder{client: client}
+}
+
+func (self *Recorder) record(measurement *Measurement) {
+	s, _ := json.Marshal(measurement)
+	key := getRedisKey(measurement.Check.ID)
+	
+	resp := self.client.ZAdd(key, redis.Z{
+		Score: float64(measurement.T),
+		Member: string(s),
+	})
+	
+	if resp.Err() != nil {
+		log.Fatalf("Error while recording measurement %s: %v\n", measurement.ID, resp.Err())
 	}
 }
 
@@ -306,7 +325,7 @@ func runWebsocketHub(hub *WsHub) {
 	}
 }
 
-func recorder(config Config, toRecorder chan Measurement) {
+func recordMeasurements(config Config, recorder *Recorder, toRecorder chan Measurement) {
 	recordTimer := metrics.NewTimer()
 	metrics.Register("canaryd.record", recordTimer)
 
@@ -315,7 +334,7 @@ func recorder(config Config, toRecorder chan Measurement) {
 
 	for {
 		m := <-toRecorder
-		recordTimer.Time(func() { m.record() })
+		recordTimer.Time(func() { recorder.record(&m) })
 		trimTimer.Time(func() { trimMeasurements(m.Check.ID, config.Retention) })
 	}
 }
@@ -401,7 +420,9 @@ func main() {
 	go httpServer(config, wsHub)
 	go udpServer(config.Port, toRecorder, toWebsocket)
 	go websocketWriter(config, wsHub, toWebsocket)
-	go recorder(config, toRecorder)
+
+	recorder := NewRecorder(client)
+	go recordMeasurements(config, recorder, toRecorder)
 
 	select {}
 }
