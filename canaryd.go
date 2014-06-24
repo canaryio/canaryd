@@ -59,6 +59,8 @@ type Config struct {
 	InfluxdbPassword string
 }
 
+// This interface exists solely to allow for a mock to be used in place of a
+// live connection to a redis server.
 type RedisClient interface {
 	ZAdd(key string, members ...redis.Z) *redis.IntCmd
 	ZRemRangeByScore(key, min, max string) *redis.IntCmd
@@ -108,6 +110,8 @@ var wsUpgrader = websocket.Upgrader{
 	},
 }
 
+// the Recorder is responsible for recording Measurements in Redis, and possibly
+// publishing them, as well.
 type Recorder struct {
 	client RedisClient
 	publish bool
