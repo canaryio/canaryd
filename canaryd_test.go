@@ -66,7 +66,7 @@ func TestGetHealth(t *testing.T) {
 func TestRecordMeasurement(t *testing.T) {
 	measurement := Measurement{
 		Check:      Check{"FOO", "http://localhost"},
-		ID:         "FOO",
+		ID:         "ee338667-42ac-4a4f-49cc-00a6a16a384b",
 		Location:   "test-location",
 		T:          1403604335,
 		ExitStatus: 0,
@@ -79,7 +79,7 @@ func TestRecordMeasurement(t *testing.T) {
 	
 	mockRedis.On(
 		"ZAdd",
-		"measurements:" + measurement.ID,
+		"measurements:FOO",
 		[]redis.Z{
 			redis.Z{
 				Score: float64(measurement.T),
@@ -98,7 +98,7 @@ func TestRecordMeasurement(t *testing.T) {
 func TestPublishMeasurement(t *testing.T) {
 	measurement := Measurement{
 		Check:      Check{"FOO", "http://localhost"},
-		ID:         "FOO",
+		ID:         "ee338667-42ac-4a4f-49cc-00a6a16a384b",
 		Location:   "test-location",
 		T:          1403604335,
 		ExitStatus: 0,
@@ -111,7 +111,7 @@ func TestPublishMeasurement(t *testing.T) {
 	
 	mockRedis.On(
 		"ZAdd",
-		"measurements:" + measurement.ID,
+		"measurements:FOO",
 		[]redis.Z{
 			redis.Z{
 				Score: float64(measurement.T),
@@ -122,7 +122,7 @@ func TestPublishMeasurement(t *testing.T) {
 	
 	mockRedis.On(
 		"Publish",
-		"measurements:" + measurement.ID,
+		"measurements:FOO",
 		string(s),
 	).Return(resp)
 
