@@ -1,7 +1,7 @@
 canaryd
 =======
 
-`canaryd` is an aggregator for measurements taken by [`sensord`](https://github.com/canaryio/sensord).  It ingests metrics via UDP and stores a small window of them in a Redis instance. Those measurements are then made available via a simple HTTP API.
+`canaryd` is an aggregator for measurements taken by [`sensord`](https://github.com/canaryio/sensord).  It ingests metrics via UDP and stores a small window of them in a Redis instance. Those measurements are then made available via a simple HTTP API and Websocket.
 
 ### Build
 
@@ -32,3 +32,6 @@ $ godep go run canaryd.go
 2014/05/24 14:00:41 fn=httpServer listening=true port=5000
 2014/05/24 14:00:41 fn=udpServer listening=true port=5000
 ```
+
+###Websocket
+Measurements can be received in (near) realtime via websocket. You can create a websocket connection at `<host>:<PORT>/ws/checks/{check_id}/measurements`. This connection will stream measurements back for the check ID you've specified.

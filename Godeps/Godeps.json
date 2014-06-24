@@ -37,6 +37,10 @@
 		{
 			"ImportPath": "github.com/vmihailenco/redis/v2",
 			"Rev": "18da14f838c8108e54c572f4f0cc6f4ea8184311"
+		},
+		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "10a95d14a3a215f5e2045d3dbbcd29f1ab209586"
 		}
 	]
 }
