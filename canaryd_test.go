@@ -41,6 +41,12 @@ func (mr *MockRedis) ZRevRangeByScore(key string, opt redis.ZRangeByScore) *redi
 	return args.Get(0).(*redis.StringSliceCmd)
 }
 
+func (mr *MockRedis) Publish(channel, message string) *redis.IntCmd {
+	args := mr.Mock.Called(channel, message)
+	
+	return args.Get(0).(*redis.IntCmd)
+}
+
 func TestGetHealth(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(healthHandler))
 	defer ts.Close()
@@ -56,7 +62,6 @@ func TestGetHealth(t *testing.T) {
 
 	assert.Equal(t, "OK\n", string(body))
 }
-
 
 func TestRecordMeasurement(t *testing.T) {
 	measurement := Measurement{
@@ -83,7 +88,45 @@ func TestRecordMeasurement(t *testing.T) {
 		},
 	).Return(resp)
 	
-	recorder := NewRecorder(mockRedis)
+	recorder := NewRecorder(mockRedis, false)
+
+	recorder.record(&measurement)
+	
+	mockRedis.AssertExpectations(t)
+}
+
+func TestPublishMeasurement(t *testing.T) {
+	measurement := Measurement{
+		Check:      Check{"FOO", "http://localhost"},
+		ID:         "FOO",
+		Location:   "test-location",
+		T:          1403604335,
+		ExitStatus: 0,
+	}
+
+	s, _ := json.Marshal(measurement)
+	
+	mockRedis := new(MockRedis)
+	resp := redis.NewIntCmd()
+	
+	mockRedis.On(
+		"ZAdd",
+		"measurements:" + measurement.ID,
+		[]redis.Z{
+			redis.Z{
+				Score: float64(measurement.T),
+				Member: string(s),
+			},
+		},
+	).Return(resp)
+	
+	mockRedis.On(
+		"Publish",
+		"measurements:" + measurement.ID,
+		string(s),
+	).Return(resp)
+
+	recorder := NewRecorder(mockRedis, true)
 
 	recorder.record(&measurement)
 	

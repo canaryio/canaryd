@@ -47,6 +47,7 @@ type Config struct {
 	SensordURLs      stringslice
 	Port             string
 	RedisURL         string
+	Publish          bool
 	Retention        int64
 	LibratoEmail     string
 	LibratoToken     string
@@ -62,6 +63,7 @@ type RedisClient interface {
 	ZAdd(key string, members ...redis.Z) *redis.IntCmd
 	ZRemRangeByScore(key, min, max string) *redis.IntCmd
 	ZRevRangeByScore(key string, opt redis.ZRangeByScore) *redis.StringSliceCmd
+	Publish(channel, message string) *redis.IntCmd
 }
 
 type Check struct {
@@ -108,10 +110,14 @@ var wsUpgrader = websocket.Upgrader{
 
 type Recorder struct {
 	client RedisClient
+	publish bool
 }
 
-func NewRecorder(client RedisClient) *Recorder {
-	return &Recorder{client: client}
+func NewRecorder(client RedisClient, publish bool) *Recorder {
+	return &Recorder{
+		client: client,
+		publish: publish,
+	}
 }
 
 func (self *Recorder) record(measurement *Measurement) {
@@ -125,6 +131,14 @@ func (self *Recorder) record(measurement *Measurement) {
 	
 	if resp.Err() != nil {
 		log.Fatalf("Error while recording measurement %s: %v\n", measurement.ID, resp.Err())
+	}
+	
+	if self.publish {
+		resp = self.client.Publish(key, string(s))
+		
+		if resp.Err() != nil {
+			log.Fatalf("Error while publishing measurement %s: %v\n", measurement.ID, resp.Err())
+		}
 	}
 }
 
@@ -352,6 +366,8 @@ func init() {
 	config.Port = getEnvWithDefault("PORT", "5000")
 	config.RedisURL = getEnvWithDefault("REDIS_URL", "redis://localhost:6379")
 
+	config.Publish = getEnvWithDefault("REDIS_PUBLISH", "no") != "no"
+
 	retention, err := strconv.ParseInt(getEnvWithDefault("RETENTION", "60"), 10, 64)
 	if err != nil {
 		log.Fatal(err)
@@ -421,7 +437,7 @@ func main() {
 	go udpServer(config.Port, toRecorder, toWebsocket)
 	go websocketWriter(config, wsHub, toWebsocket)
 
-	recorder := NewRecorder(client)
+	recorder := NewRecorder(client, config.Publish)
 	go recordMeasurements(config, recorder, toRecorder)
 
 	select {}
