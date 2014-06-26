@@ -22,7 +22,7 @@ import (
 )
 
 var config Config
-var client *redis.Client
+var client RedisClient
 var wsHub = &WsHub{
 	Broadcast: make(chan *Measurement),
 	Register: make(chan *WsWrapper),
@@ -47,6 +47,7 @@ type Config struct {
 	SensordURLs      stringslice
 	Port             string
 	RedisURL         string
+	Publish          bool
 	Retention        int64
 	LibratoEmail     string
 	LibratoToken     string
@@ -56,6 +57,15 @@ type Config struct {
 	InfluxdbDatabase string
 	InfluxdbUser     string
 	InfluxdbPassword string
+}
+
+// This interface exists solely to allow for a mock to be used in place of a
+// live connection to a redis server.
+type RedisClient interface {
+	ZAdd(key string, members ...redis.Z) *redis.IntCmd
+	ZRemRangeByScore(key, min, max string) *redis.IntCmd
+	ZRevRangeByScore(key string, opt redis.ZRangeByScore) *redis.StringSliceCmd
+	Publish(channel, message string) *redis.IntCmd
 }
 
 type Check struct {
@@ -100,12 +110,39 @@ var wsUpgrader = websocket.Upgrader{
 	},
 }
 
-func (m *Measurement) record() {
-	s, _ := json.Marshal(m)
-	z := redis.Z{Score: float64(m.T), Member: string(s)}
-	r := client.ZAdd(getRedisKey(m.Check.ID), z)
-	if r.Err() != nil {
-		log.Fatalf("Error while recording measurement %s: %v\n", m.ID, r.Err())
+// the Recorder is responsible for recording Measurements in Redis, and possibly
+// publishing them, as well.
+type Recorder struct {
+	client RedisClient
+	publish bool
+}
+
+func NewRecorder(client RedisClient, publish bool) *Recorder {
+	return &Recorder{
+		client: client,
+		publish: publish,
+	}
+}
+
+func (self *Recorder) record(measurement *Measurement) {
+	s, _ := json.Marshal(measurement)
+	key := getRedisKey(measurement.Check.ID)
+	
+	resp := self.client.ZAdd(key, redis.Z{
+		Score: float64(measurement.T),
+		Member: string(s),
+	})
+	
+	if resp.Err() != nil {
+		log.Fatalf("Error while recording measurement %s: %v\n", measurement.ID, resp.Err())
+	}
+	
+	if self.publish {
+		resp = self.client.Publish(key, string(s))
+		
+		if resp.Err() != nil {
+			log.Fatalf("Error while publishing measurement %s: %v\n", measurement.ID, resp.Err())
+		}
 	}
 }
 
@@ -306,7 +343,7 @@ func runWebsocketHub(hub *WsHub) {
 	}
 }
 
-func recorder(config Config, toRecorder chan Measurement) {
+func recordMeasurements(config Config, recorder *Recorder, toRecorder chan Measurement) {
 	recordTimer := metrics.NewTimer()
 	metrics.Register("canaryd.record", recordTimer)
 
@@ -315,7 +352,7 @@ func recorder(config Config, toRecorder chan Measurement) {
 
 	for {
 		m := <-toRecorder
-		recordTimer.Time(func() { m.record() })
+		recordTimer.Time(func() { recorder.record(&m) })
 		trimTimer.Time(func() { trimMeasurements(m.Check.ID, config.Retention) })
 	}
 }
@@ -332,6 +369,10 @@ func getEnvWithDefault(name, def string) string {
 func init() {
 	config.Port = getEnvWithDefault("PORT", "5000")
 	config.RedisURL = getEnvWithDefault("REDIS_URL", "redis://localhost:6379")
+
+	if os.Getenv("REDIS_PUBLISH") == "1" {
+		config.Publish = true
+	}
 
 	retention, err := strconv.ParseInt(getEnvWithDefault("RETENTION", "60"), 10, 64)
 	if err != nil {
@@ -401,7 +442,9 @@ func main() {
 	go httpServer(config, wsHub)
 	go udpServer(config.Port, toRecorder, toWebsocket)
 	go websocketWriter(config, wsHub, toWebsocket)
-	go recorder(config, toRecorder)
+
+	recorder := NewRecorder(client, config.Publish)
+	go recordMeasurements(config, recorder, toRecorder)
 
 	select {}
 }
