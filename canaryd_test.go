@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/canaryio/data"
 	"github.com/vmihailenco/redis/v2"
 
 	"net/http/httptest"
@@ -64,8 +65,8 @@ func TestGetHealth(t *testing.T) {
 }
 
 func TestRecordMeasurement(t *testing.T) {
-	measurement := Measurement{
-		Check:      Check{"FOO", "http://localhost"},
+	measurement := data.Measurement{
+		Check:      data.Check{"FOO", "http://localhost"},
 		ID:         "ee338667-42ac-4a4f-49cc-00a6a16a384b",
 		Location:   "test-location",
 		T:          1403604335,
@@ -96,8 +97,8 @@ func TestRecordMeasurement(t *testing.T) {
 }
 
 func TestPublishMeasurement(t *testing.T) {
-	measurement := Measurement{
-		Check:      Check{"FOO", "http://localhost"},
+	measurement := data.Measurement{
+		Check:      data.Check{"FOO", "http://localhost"},
 		ID:         "ee338667-42ac-4a4f-49cc-00a6a16a384b",
 		Location:   "test-location",
 		T:          1403604335,

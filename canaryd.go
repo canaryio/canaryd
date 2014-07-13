@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/canaryio/data"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/rcrowley/go-metrics"
@@ -24,7 +25,7 @@ import (
 var config Config
 var client RedisClient
 var wsHub = &WsHub{
-	Broadcast:   make(chan *Measurement),
+	Broadcast:   make(chan *data.Measurement),
 	Register:    make(chan *WsWrapper),
 	UnRegister:  make(chan *WsWrapper),
 	Connections: make(map[string]map[*WsWrapper]bool),
@@ -68,29 +69,8 @@ type RedisClient interface {
 	Publish(channel, message string) *redis.IntCmd
 }
 
-type Check struct {
-	ID  string `json:"id"`
-	URL string `json:"url"`
-}
-
-type Measurement struct {
-	Check             Check   `json:"check"`
-	ID                string  `json:"id"`
-	Location          string  `json:"location"`
-	T                 int     `json:"t"`
-	ExitStatus        int     `json:"exit_status"`
-	HTTPStatus        int     `json:"http_status,omitempty"`
-	LocalIP           string  `json:"local_ip,omitempty"`
-	PrimaryIP         string  `json:"primary_ip,omitempty"`
-	NameLookupTime    float64 `json:"namelookup_time,omitempty"`
-	ConnectTime       float64 `json:"connect_time,omitempty"`
-	StartTransferTime float64 `json:"starttransfer_time,omitempty"`
-	TotalTime         float64 `json:"total_time,omitempty"`
-	SizeDownload      float64 `json:"size_download,omitempty"`
-}
-
 type WsHub struct {
-	Broadcast   chan *Measurement
+	Broadcast   chan *data.Measurement
 	Register    chan *WsWrapper
 	UnRegister  chan *WsWrapper
 	Connections map[string]map[*WsWrapper]bool
@@ -124,7 +104,7 @@ func NewRecorder(client RedisClient, publish bool) *Recorder {
 	}
 }
 
-func (self *Recorder) record(measurement *Measurement) {
+func (self *Recorder) record(measurement *data.Measurement) {
 	s, _ := json.Marshal(measurement)
 	key := getRedisKey(measurement.Check.ID)
 
@@ -159,14 +139,14 @@ func getRedisKey(checkID string) string {
 	return "measurements:" + checkID
 }
 
-func getMeasurementsByRange(checkID string, r int64) []Measurement {
+func getMeasurementsByRange(checkID string, r int64) []data.Measurement {
 	now := time.Now()
 	from := now.Unix() - r
 
 	return getMeasurementsFrom(checkID, from)
 }
 
-func getMeasurementsFrom(checkID string, from int64) []Measurement {
+func getMeasurementsFrom(checkID string, from int64) []data.Measurement {
 	vals, err := client.ZRevRangeByScore(getRedisKey(checkID), redis.ZRangeByScore{
 		Min: strconv.FormatInt(from, 10),
 		Max: "+inf",
@@ -176,10 +156,10 @@ func getMeasurementsFrom(checkID string, from int64) []Measurement {
 		panic(err)
 	}
 
-	measurements := make([]Measurement, 0, 100)
+	measurements := make([]data.Measurement, 0, 100)
 
 	for _, v := range vals {
-		var m Measurement
+		var m data.Measurement
 		json.Unmarshal([]byte(v), &m)
 		measurements = append(measurements, m)
 	}
@@ -250,7 +230,7 @@ func httpServer(config Config, hub *WsHub) {
 	}
 }
 
-func udpServer(port string, toRecorder chan Measurement, toWebsocket chan Measurement) {
+func udpServer(port string, toRecorder chan data.Measurement, toWebsocket chan data.Measurement) {
 	udpAddr, err := net.ResolveUDPAddr("udp4", "0.0.0.0:"+port)
 	if err != nil {
 		log.Fatal(err)
@@ -271,7 +251,7 @@ func udpServer(port string, toRecorder chan Measurement, toWebsocket chan Measur
 		}
 
 		payload := buf[0:n]
-		var m Measurement
+		var m data.Measurement
 		err = msgpack.Unmarshal(payload, &m)
 		if err != nil {
 			log.Fatal(err)
@@ -312,7 +292,7 @@ func websocketHandler(hub *WsHub, res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func websocketWriter(config Config, hub *WsHub, toWebsocket chan Measurement) {
+func websocketWriter(config Config, hub *WsHub, toWebsocket chan data.Measurement) {
 	for m := range toWebsocket {
 		hub.Broadcast <- &m
 	}
@@ -343,7 +323,7 @@ func runWebsocketHub(hub *WsHub) {
 	}
 }
 
-func recordMeasurements(config Config, recorder *Recorder, toRecorder chan Measurement) {
+func recordMeasurements(config Config, recorder *Recorder, toRecorder chan data.Measurement) {
 	recordTimer := metrics.NewTimer()
 	metrics.Register("canaryd.record", recordTimer)
 
@@ -403,8 +383,8 @@ func init() {
 }
 
 func main() {
-	toRecorder := make(chan Measurement)
-	toWebsocket := make(chan Measurement)
+	toRecorder := make(chan data.Measurement)
+	toWebsocket := make(chan data.Measurement)
 
 	if config.LibratoEmail != "" && config.LibratoToken != "" && config.LibratoSource != "" {
 		log.Println("fn=main metrics=librato")
