@@ -1,7 +1,12 @@
 {
 	"ImportPath": "github.com/canaryio/canaryd",
-	"GoVersion": "go1.2.2",
+	"GoVersion": "go1.3",
 	"Deps": [
+		{
+			"ImportPath": "github.com/canaryio/data",
+			"Comment": "v0.1.0-4-g91ecc53",
+			"Rev": "91ecc530a2b14b8c771693c829e863392f8ae62f"
+		},
 		{
 			"ImportPath": "github.com/golang/glog",
 			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
@@ -15,8 +20,16 @@
 			"Rev": "0ef595e787efa95d68151570ead5c85dc2e05f91"
 		},
 		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "10a95d14a3a215f5e2045d3dbbcd29f1ab209586"
+		},
+		{
 			"ImportPath": "github.com/influxdb/influxdb-go",
 			"Rev": "63c9a5f67dcb633d05164bf8442160c9e2e402f7"
+		},
+		{
+			"ImportPath": "github.com/nu7hatch/gouuid",
+			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},
 		{
 			"ImportPath": "github.com/rcrowley/go-metrics",
@@ -45,10 +58,6 @@
 		{
 			"ImportPath": "github.com/vmihailenco/redis/v2",
 			"Rev": "18da14f838c8108e54c572f4f0cc6f4ea8184311"
-		},
-		{
-			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "10a95d14a3a215f5e2045d3dbbcd29f1ab209586"
 		}
 	]
 }
