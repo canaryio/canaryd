@@ -15,8 +15,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/rcrowley/go-metrics"
-	"github.com/rcrowley/go-metrics/librato"
 	"github.com/rcrowley/go-metrics/influxdb"
+	"github.com/rcrowley/go-metrics/librato"
 	"github.com/vmihailenco/msgpack"
 	"github.com/vmihailenco/redis/v2"
 )
@@ -24,9 +24,9 @@ import (
 var config Config
 var client RedisClient
 var wsHub = &WsHub{
-	Broadcast: make(chan *Measurement),
-	Register: make(chan *WsWrapper),
-	UnRegister: make(chan *WsWrapper),
+	Broadcast:   make(chan *Measurement),
+	Register:    make(chan *WsWrapper),
+	UnRegister:  make(chan *WsWrapper),
 	Connections: make(map[string]map[*WsWrapper]bool),
 }
 
@@ -90,16 +90,16 @@ type Measurement struct {
 }
 
 type WsHub struct {
-	Broadcast         chan *Measurement
-	Register          chan *WsWrapper
-	UnRegister        chan *WsWrapper
-	Connections       map[string]map[*WsWrapper]bool
+	Broadcast   chan *Measurement
+	Register    chan *WsWrapper
+	UnRegister  chan *WsWrapper
+	Connections map[string]map[*WsWrapper]bool
 }
 
 type WsWrapper struct {
-	Conn              *websocket.Conn
-	CheckID           string
-	RemoteAddr        string
+	Conn       *websocket.Conn
+	CheckID    string
+	RemoteAddr string
 }
 
 var wsUpgrader = websocket.Upgrader{
@@ -113,13 +113,13 @@ var wsUpgrader = websocket.Upgrader{
 // the Recorder is responsible for recording Measurements in Redis, and possibly
 // publishing them, as well.
 type Recorder struct {
-	client RedisClient
+	client  RedisClient
 	publish bool
 }
 
 func NewRecorder(client RedisClient, publish bool) *Recorder {
 	return &Recorder{
-		client: client,
+		client:  client,
 		publish: publish,
 	}
 }
@@ -127,19 +127,19 @@ func NewRecorder(client RedisClient, publish bool) *Recorder {
 func (self *Recorder) record(measurement *Measurement) {
 	s, _ := json.Marshal(measurement)
 	key := getRedisKey(measurement.Check.ID)
-	
+
 	resp := self.client.ZAdd(key, redis.Z{
-		Score: float64(measurement.T),
+		Score:  float64(measurement.T),
 		Member: string(s),
 	})
-	
+
 	if resp.Err() != nil {
 		log.Fatalf("Error while recording measurement %s: %v\n", measurement.ID, resp.Err())
 	}
-	
+
 	if self.publish {
 		resp = self.client.Publish(key, string(s))
-		
+
 		if resp.Err() != nil {
 			log.Fatalf("Error while publishing measurement %s: %v\n", measurement.ID, resp.Err())
 		}
@@ -237,9 +237,9 @@ func httpServer(config Config, hub *WsHub) {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", healthHandler).Methods("GET")
 	router.HandleFunc("/checks/{check_id}/measurements", measurementsReqHandler).Methods("GET")
-	router.HandleFunc("/ws/checks/{check_id}/measurements", func(res http.ResponseWriter, req *http.Request){
+	router.HandleFunc("/ws/checks/{check_id}/measurements", func(res http.ResponseWriter, req *http.Request) {
 		websocketHandler(hub, res, req)
-	});
+	})
 	http.Handle("/", router)
 
 	log.Printf("fn=httpServer listening=true port=%s\n", config.Port)
@@ -295,8 +295,8 @@ func websocketHandler(hub *WsHub, res http.ResponseWriter, req *http.Request) {
 	defer conn.Close()
 
 	wsWrapper := WsWrapper{
-		Conn: conn,
-		CheckID: checkID,
+		Conn:       conn,
+		CheckID:    checkID,
 		RemoteAddr: req.RemoteAddr,
 	}
 
@@ -321,24 +321,24 @@ func websocketWriter(config Config, hub *WsHub, toWebsocket chan Measurement) {
 func runWebsocketHub(hub *WsHub) {
 	for {
 		select {
-			case wsWrapper := <-hub.Register:
-				checkMap := hub.Connections[wsWrapper.CheckID]
-				if checkMap == nil {
-					hub.Connections[wsWrapper.CheckID] = make(map[*WsWrapper]bool)
+		case wsWrapper := <-hub.Register:
+			checkMap := hub.Connections[wsWrapper.CheckID]
+			if checkMap == nil {
+				hub.Connections[wsWrapper.CheckID] = make(map[*WsWrapper]bool)
+			}
+			hub.Connections[wsWrapper.CheckID][wsWrapper] = true
+			log.Printf("fn=runWebsocketHub#Register remoteAddr=%s checkID=%s connectWsClient=true\n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
+		case wsWrapper := <-hub.UnRegister:
+			log.Printf("fn=runWebsocketHub#UnRegister remoteAddr=%s checkID=%s removeWsClient=true \n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
+			delete(hub.Connections[wsWrapper.CheckID], wsWrapper)
+		case m := <-hub.Broadcast:
+			for wsWrapper := range hub.Connections[m.Check.ID] {
+				err := wsWrapper.Conn.WriteJSON(m)
+				if err != nil {
+					delete(hub.Connections[m.Check.ID], wsWrapper)
+					log.Printf("fn=runWebsocketHub#Broadcast remoteAddr=%s checkID=%s removeWsClient=true \n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
 				}
-				hub.Connections[wsWrapper.CheckID][wsWrapper] = true
-				log.Printf("fn=runWebsocketHub#Register remoteAddr=%s checkID=%s connectWsClient=true\n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
-			case wsWrapper := <-hub.UnRegister:
-				log.Printf("fn=runWebsocketHub#UnRegister remoteAddr=%s checkID=%s removeWsClient=true \n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
-				delete(hub.Connections[wsWrapper.CheckID], wsWrapper)
-			case m := <-hub.Broadcast:
-				for wsWrapper := range hub.Connections[m.Check.ID] {
-					err := wsWrapper.Conn.WriteJSON(m)
-					if err != nil {
-						delete(hub.Connections[m.Check.ID], wsWrapper)
-						log.Printf("fn=runWebsocketHub#Broadcast remoteAddr=%s checkID=%s removeWsClient=true \n", wsWrapper.RemoteAddr, wsWrapper.CheckID)
-					}
-				}
+			}
 		}
 	}
 }
@@ -396,9 +396,9 @@ func init() {
 		config.LogStderr = true
 	}
 
-	config.InfluxdbHost     = os.Getenv("INFLUXDB_HOST")
+	config.InfluxdbHost = os.Getenv("INFLUXDB_HOST")
 	config.InfluxdbDatabase = os.Getenv("INFLUXDB_DATABASE")
-	config.InfluxdbUser     = os.Getenv("INFLUXDB_USER")
+	config.InfluxdbUser = os.Getenv("INFLUXDB_USER")
 	config.InfluxdbPassword = os.Getenv("INFLUXDB_PASSWORD")
 }
 
@@ -423,9 +423,9 @@ func main() {
 	}
 
 	if config.InfluxdbHost != "" &&
-	   config.InfluxdbDatabase != "" &&
-	   config.InfluxdbUser != "" &&
-	   config.InfluxdbPassword != "" {
+		config.InfluxdbDatabase != "" &&
+		config.InfluxdbUser != "" &&
+		config.InfluxdbPassword != "" {
 		log.Println("fn=main metrics=influxdb")
 
 		go influxdb.Influxdb(metrics.DefaultRegistry, 10e9, &influxdb.Config{
