@@ -3,11 +3,6 @@
 	"GoVersion": "go1.3",
 	"Deps": [
 		{
-			"ImportPath": "github.com/canaryio/data",
-			"Comment": "v0.1.0-4-g91ecc53",
-			"Rev": "91ecc530a2b14b8c771693c829e863392f8ae62f"
-		},
-		{
 			"ImportPath": "github.com/golang/glog",
 			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
 		},
@@ -25,11 +20,8 @@
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/client",
-			"Rev": "3b710fdc102623ac9d8b8d0d0a412e4c3bed3a94"
-		},
-		{
-			"ImportPath": "github.com/nu7hatch/gouuid",
-			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+			"Comment": "v0.8.0-rc.3-9-g3284662",
+			"Rev": "3284662b350688b651359f9124928856071bd3f5"
 		},
 		{
 			"ImportPath": "github.com/rcrowley/go-metrics",
