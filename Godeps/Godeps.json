@@ -24,8 +24,8 @@
 			"Rev": "10a95d14a3a215f5e2045d3dbbcd29f1ab209586"
 		},
 		{
-			"ImportPath": "github.com/influxdb/influxdb-go",
-			"Rev": "63c9a5f67dcb633d05164bf8442160c9e2e402f7"
+			"ImportPath": "github.com/influxdb/influxdb/client",
+			"Rev": "3b710fdc102623ac9d8b8d0d0a412e4c3bed3a94"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -33,7 +33,7 @@
 		},
 		{
 			"ImportPath": "github.com/rcrowley/go-metrics",
-			"Rev": "6ffbdf30ba7072d9f9e2afe57ad651a75a544a83"
+			"Rev": "1f6faa4de7e71a54cb9edff5dd0f93ad12ba71a7"
 		},
 		{
 			"ImportPath": "github.com/stretchr/objx",
